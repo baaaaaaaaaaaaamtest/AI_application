@@ -1,0 +1,4 @@
+.env
+__pycache__
+query_log
+module/__pycache__
