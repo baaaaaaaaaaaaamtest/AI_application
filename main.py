@@ -36,8 +36,8 @@ import os
 load_dotenv()
 logging.langsmith("CH99-kakao-Chatbot")
 
-OLLAMA_BASE_URL = "http://localhost:11434" # Ollama 서버 주소
-OLLAMA_CHAT_MODEL = "ollama-ko-0710:latest" # Ollama에서 실행중인 모델 이름
+# OLLAMA_BASE_URL = "http://localhost:11434" # Ollama 서버 주소
+# OLLAMA_CHAT_MODEL = "ollama-ko-0710:latest" # Ollama에서 실행중인 모델 이름
 
 
 async def get_mcp_server_response(query):
@@ -103,39 +103,6 @@ def get_news_origin(json_data):
         news_docs = news_loader.load()
     return sport_docs+news_docs
     
-
-
-# def get_news_origin(json_data):
-#     text = ""  # 기본값 할당
-#     for item in json_data.get('items', []):
-#         link = item.get('link')
-
-#         # 여기다가 뉴스 url 검사 로직 추가, url 별로 본문 크롤링 로직 추가
-#         if link and link.startswith("https://n.news.naver.com/mnews/article/"):
-#             try:
-#                 headers = {'User-Agent': 'Mozilla/5.0'}
-#                 response = requests.get(link, headers=headers, timeout=10)
-#                 if response.status_code == 200:
-#                     soup = BeautifulSoup(response.text, 'html.parser')
-#                     content = soup.select_one("#dic_area")
-#                     #dic_area
-#                     if content:
-#                         # 불필요한 태그 제거
-#                         for tag in content(['script', 'style', 'div', 'iframe', 'p']):
-#                             # 단, p 태그는 남기고 싶은 경우 제외 가능
-#                             if tag.name == 'p':
-#                                 continue
-#                             tag.decompose()
-#                         text += content.get_text(separator='\n').strip()
-#                     else:
-#                         print(f"URL {link} 본문 영역을 찾지 못했습니다.")
-#                 else:
-#                     print(f"URL {link} 접속 실패, 상태 코드: {response.status_code}")
-#             except Exception as e:
-#                 print(f"URL {link} 접속/파싱 중 오류 발생: {e}")
-#     return text
-
-
 
 def get_split_docs(news_doc):
     # 1. 텍스트 청크 분할 (chunk_size=1000, chunk_overlap=50)
@@ -240,8 +207,8 @@ async def general_llm(news_doc,utterance):
     
     
     # 7. Ollama LLM 초기화
-    llm = OllamaLLM(model=OLLAMA_CHAT_MODEL, base_url=OLLAMA_BASE_URL,temperature=1, max_tokens=1024)
-    # llm = ChatOpenAI(model_name="gpt-4.1-mini", temperature=0.7, max_tokens=1024)
+    # llm = OllamaLLM(model=OLLAMA_CHAT_MODEL, base_url=OLLAMA_BASE_URL,temperature=1, max_tokens=1024)
+    llm = ChatOpenAI(model_name="gpt-4.1-mini", temperature=0.7, max_tokens=1024)
     chain = (
     {
         "context": itemgetter("question")
@@ -256,46 +223,6 @@ async def general_llm(news_doc,utterance):
     question = {"question": f'{utterance}'}
     answer = chain.invoke(question)
     return answer
-
-# async def general_llm(result_text,utterance):
-#     if result_text == "":
-#         return "죄송해요. 뉴스를 찾지 못했어요. 다른 질문 해주실래요?"
-
-
-#     split_docs = get_split_docs(result_text)
-
-#     faiss_retriever = get_retriever(split_docs)
-    
-#     bm25_retriever = get_bm25_retriever(split_docs)
-
-#     faiss_multi_retriever = get_multi_query_retriever(faiss_retriever)
-
-#     bm25_multi_retriever = get_multi_query_retriever(bm25_retriever)
-
-#     esenmble_retriever = get_esenmble_retriever(faiss_multi_retriever, bm25_multi_retriever)
-
-#     compression_retriever = get_reranker(esenmble_retriever)
-    
-#     prompt= get_prompt()
-    
-    
-#     # 7. Ollama LLM 초기화
-#     llm = OllamaLLM(model=OLLAMA_CHAT_MODEL, base_url=OLLAMA_BASE_URL,temperature=1, max_tokens=1024)
-#     # llm = ChatOpenAI(model_name="gpt-4.1-mini", temperature=0.7, max_tokens=1024)
-#     chain = (
-#     {
-#         "context": itemgetter("question")
-#         | compression_retriever
-#         | RunnableLambda(reorder_documents),  # 질문을 기반으로 문맥을 검색합니다.
-#         "question": itemgetter("question"),  # 질문을 추출합니다.
-#     }
-#     | prompt  # 프롬프트 템플릿에 값을 전달합니다.
-#     | llm # 언어 모델에 프롬프트를 전달합니다.
-#     | StrOutputParser()  # 모델의 출력을 문자열로 파싱합니다.
-#     )
-#     question = {"question": f'{utterance}'}
-#     answer = chain.invoke(question)
-#     return answer
 
 def save_log(utterance,server_response,merge,responseBody):
     text_to_save = "\n\n".join(doc.page_content for doc in merge)
@@ -357,6 +284,6 @@ async def kakao_question(request: Request, background_tasks: BackgroundTasks):
       "version": "2.0",
       "useCallback": True,
       "data": {
-        "text": "생각하고 있는 중이에요😘 \30초 정도 소요될 거 같아요 기다려 주실래요?!"
+        "text": "생각하고 있는 중이에요😘 \n 30초 정도 소요될 거 같아요 기다려 주실래요?!"
       }
     }

@@ -1,42 +1,13 @@
-from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_community.document_loaders import WebBaseLoader
+from langchain.schema import Document
+from typing import List
 import json
-import os
+
 import bs4
 
-async def get_mcp_server_response(query):
-    client = MultiServerMCPClient(
-        {
-            "naver-search-mcp": {
-                "command": "node",
-                "args": [
-                    "/home/ansgyqja/naver-search-mcp/dist/src/index.js"
-                ],
-                "transport": "stdio",
-                "cwd": "/home/ansgyqja/naver-search-mcp",
-                "env": {
-                    "NAVER_CLIENT_ID": os.getenv('NAVER_CLIENT_ID'),
-                    "NAVER_CLIENT_SECRET": os.getenv('NAVER_CLIENT_SECRET')
-                }
-            }
-        }
-    )
-    tools = await client.get_tools(server_name="naver-search-mcp")
-    tool = next(tool for tool in tools if tool.name == "search_news")
 
-    response = await tool.ainvoke({
-        "query": query,
-        "display": 50,  # 최대 100
-        "start": 1,
-        "sort": "date"  # 날짜순 정렬
-    })
-    data = json.loads(response)  # JSON 문자열을 dict로 변환
-    return data
-
-
-
-
-def get_news_origin(json_data):
+def get_news_origin(data)->List[Document]:
+    json_data = json.loads(data)
     links_naver_sports = [ item["link"] for item in json_data["items"] if "https://m.sports.naver.com/" in item["link"]]
     links_naver_news = [ item["link"] for item in json_data["items"] if "https://n.news.naver.com/" in item["link"]]
     links_naver_entertain = [ item["link"] for item in json_data["items"] if "https://m.entertain.naver.com/" in item["link"]]
@@ -67,4 +38,14 @@ def get_news_origin(json_data):
         )
         news_docs = news_loader.load()
     return sport_docs+news_docs
+
+
+async def invoke_messages(tool, messages):
+    for msg in messages:
+        msg_id = msg['id']
+        result = await tool.ainvoke({'id':msg_id})
+        data = json.loads(result)  # JSON 문자열을 dict로 변환
+        print(f"Response for {msg_id}: {data['snippet']}")
+    
+
     
