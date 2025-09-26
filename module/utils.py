@@ -10,10 +10,10 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.output_parsers import StrOutputParser
 from dotenv import load_dotenv
 from langgraph.prebuilt import ToolNode
-from langchain_core.tools.base import BaseTool  # BaseTool이 있는 경로에 따라 import 수정
+from langchain_core.tools.base import BaseTool,Field  # BaseTool이 있는 경로에 따라 import 수정
 import os
 from langgraph.checkpoint.memory import MemorySaver
-from typing import Any, Literal, Union
+from typing import Any, Literal, Union,Optional
 from langchain_core.messages import AnyMessage
 from pydantic import BaseModel
 from langchain_core.runnables import RunnableConfig
@@ -176,7 +176,7 @@ from langchain_teddynote.evaluator import GroundednessChecker
 def get_relevant(llm,target:str="question-retrieval"):
     return GroundednessChecker(llm=llm, target=target).create()
 
-def format_docs(docs):
+def convert_docs_str(docs):
     return "\n".join(
         [
             f"<document><content>{doc.page_content}</content><source>{doc.metadata['source']}</source><page>{int(doc.metadata['page'])+1}</page></document>"
@@ -185,13 +185,14 @@ def format_docs(docs):
     )
 
 
-def format_searched_docs(docs):
+def convert_search_str(docs):
     return "\n".join(
         [
             f"<document><content>{doc['content']}</content><source>{doc['url']}</source></document>"
             for doc in docs
         ]
     )
+
 
 
 

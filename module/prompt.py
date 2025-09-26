@@ -2,10 +2,114 @@
 # Query Rewrite 프롬프트 정의
 from langchain_core.prompts import PromptTemplate
 
+"""
+    PromptTemplate: 
+        일반 텍스트 기반 LLM(대화형 모델이 아닌 일반 생성 모델)에서 단일 문자열 형태의 프롬프트를 만들 때 사용합니다. 
+        입력값을 중괄호({})로 표기해 정보만 해당 위치에 삽입하는 방식입니다. 
+        예시: 번역이나 요약 등 하나의 문장 혹은 패턴이 반복되는 사용에 적합합니다.
+
+    ChatPromptTemplate: 
+        대화형 LLM(Chat 기반 모델)에서 여러 역할(role, system/user/ai 등)로 구성된 메시지 리스트를 기반으로 대화 프롬프트를 만들 때 사용합니다. 
+        메시지의 흐름(시스템 입력, 사용자 입력, AI 응답 등)을 담을 수 있고, 여러 턴(turn)에 걸친 복잡한 대화를 구성하는 데 최적화되어 있습니다.
+"""
+
+
+def get_answer_pt()->PromptTemplate:
+    """
+        input_variables=['question','answer']\n
+        Yes → 답변이 질문을 해결하거나 적절히 대답했다는 의미\n
+        No → 답변이 질문을 해결하지 못했거나 엉뚱한 답변이라는 의미\n
+    """
+    return PromptTemplate(
+        input_variables=['question','answer'],
+        template="""
+            # System :
+            You are a grader assessing whether an answer addresses / resolves a question \n 
+            Give a binary score 'yes' or 'no'. Yes' means that the answer resolves the question.
+
+            # Human :
+            User question: 
+            \n\n 
+            {question} 
+            \n\n 
+            LLM generation: 
+            {answer}
+        """
+    )
+
+def get_hallucination_pt()->PromptTemplate:
+    """
+        input_variables=['answer','document']
+        Yes → LLM의 답변이 검색된 사실에 의해 뒷받침된다.
+        No → LLM의 답변이 검색된 사실에 의해 뒷받침되지 않는다. -> 재 생성
+    """
+    return PromptTemplate(
+        input_variables=['answer','document'],
+        template="""
+            # System : 
+            You are a grader assessing whether an LLM generation is grounded in / supported by a set of retrieved facts. \n 
+            Give a binary score 'yes' or 'no'. 'Yes' means that the answer is grounded in / supported by the set of facts.
+
+            # Human : 
+            Set of facts: 
+            \n\n 
+            {document} 
+            \n\n 
+            LLM generation: 
+            {answer}
+        """
+    )
+
+def get_grade_pt()->PromptTemplate:
+    return PromptTemplate(
+        input_variables=['question','document'],
+        template="""
+            # System :
+            You are a grader assessing relevance of a retrieved document to a user question. \n 
+            If the document contains keyword(s) or semantic meaning related to the user question, grade it as relevant. \n
+            It does not need to be a stringent test. The goal is to filter out erroneous retrievals. \n
+            Give a binary score 'yes' or 'no' score to indicate whether the document is relevant to the question.
+
+            # Human : 
+            Retriever Docuemnt:
+            \n\n
+            {document}
+            \n\n
+            User Question :
+            \n\n
+            {question}
+            """
+    )
+
+def get_routing_pt()->PromptTemplate:
+    return PromptTemplate(
+        input_variables=['question'],
+        template="""
+            # System : 
+
+            You are an AI system that routes user questions into one of three approaches based on the question's nature:
+            vectorstore: Contains information such as the DEC 2023 AI Brief Report (SPRI).
+            web_search:When the user requests recent information or older data, suggest using the web_search tool to retrieve up-to-date external data. 
+            This helps ensure the response is accurate and current by accessing information beyond internal sources.
+            generate: Used for everyday dialogues, casual conversations, or counseling scenarios.
+            Based on the user's question, please suggest the most appropriate routing approach among these three.
+
+            # Here is the user's QUESTION that you should answer:
+            {question}
+
+            # Your final ANSWER to the user's QUESTION:
+        """
+    )
+
 def get_rag_pt()->PromptTemplate:
+    """
+        Argument:
+        input_variables=['context', 'question']
+    """
     return PromptTemplate(
     input_variables=['context', 'question'],
     template="""
+
         You are an AI assistant specializing in Question-Answering (QA) tasks within a Retrieval-Augmented Generation (RAG) system. 
         Your primary mission is to answer questions based on provided context or chat history.
         Ensure your response is concise and directly addresses the question without any additional narration.
@@ -24,11 +128,6 @@ def get_rag_pt()->PromptTemplate:
 
         # Output Format:
         [Your final answer here, with numerical values, technical terms, jargon, and names in their original language]
-
-        **Source**(Optional)
-        - (Source of the answer, must be a file name(with a page number) or URL from the context. Omit if you can't find the source of the answer.)
-        - (list more if there are multiple sources)
-        - ...
 
         ###
 
@@ -73,6 +172,12 @@ def get_re_write_pt()->PromptTemplate:
         # Examples
 
         **Input**: 
+        "Hi, My name is kay"
+
+        **Output**: 
+        "Hi, nice to meet you, my name is kay. Could you help me?"
+
+        **Input**: 
         "What are the benefits of using renewable energy sources over fossil fuels?"
 
         **Output**: 
@@ -97,3 +202,5 @@ def get_re_write_pt()->PromptTemplate:
         """,
     
 )
+
+
