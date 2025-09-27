@@ -11,6 +11,16 @@ from langchain_core.prompts import PromptTemplate,ChatPromptTemplate
     ChatPromptTemplate: 
         대화형 LLM(Chat 기반 모델)에서 여러 역할(role, system/user/ai 등)로 구성된 메시지 리스트를 기반으로 대화 프롬프트를 만들 때 사용합니다. 
         메시지의 흐름(시스템 입력, 사용자 입력, AI 응답 등)을 담을 수 있고, 여러 턴(turn)에 걸친 복잡한 대화를 구성하는 데 최적화되어 있습니다.
+
+        ** 추가 MessagesPlaceholder
+        
+        MessagesPlaceholder는 프롬프트 템플릿 내 특정 위치에 동적으로 메시지 목록(대화 히스토리 등)을 삽입하는 역할을 합니다.
+
+        예를 들어, 과거 대화 내용(사용자와 AI의 메시지 리스트)을 변수로 받아서 그 위치에 자동으로 해당 메시지들이 삽입됩니다.
+
+        템플릿을 호출할 때 여러 메시지 객체를 리스트 형태로 넣을 수 있으며, 이를 쉽게 관리하고 대화 컨텍스트를 자연스럽게 이어나가게 만듭니다.
+
+        주로 대화형 AI에서 이전 대화 기록을 포함시켜 응답 맥락을 유지할 때 유용합니다.
 """
 
 
@@ -18,9 +28,16 @@ def get_prompt_assistant()->ChatPromptTemplate:
     """
         이전 대화를 모두 불러와 사용하는 유형의 챗봇
     """
+    system_template = """
+        You are a service support chatbot for the "Robert Chicken" system, 
+        which is an automated chicken preparation and service system powered by a collaborative robot.  \n
+        You can provide detailed information about system introduction, operation methods, troubleshooting, and cleaning procedures.  \n
+        All responses must be professional yet customer-friendly,
+        and you must always answer in Korean.  \n
+    """
     return ChatPromptTemplate(
         [
-            ("system", "You are a customer support agent for an airline. Answer in Korean."),
+            ("system",system_template),
             ("placeholder", "{messages}"),
         ]
     )
@@ -30,14 +47,17 @@ def get_prompt_persona()->ChatPromptTemplate:
         가상의 환경에 놓인 사용자 
     """
     template ="""
-        You are a customer of an airline company. \
+        You are a customer of an Robert Chicken. \
         You are interacting with a user who is a customer support person. \
 
         Your name is james
 
         # Instructions:
-        You are trying to get a refund for the trip you took to Jeju Island. \
-        You want them to give you ALL the money back. This trip happened last year.
+        I recently purchased a collaborative robot-based chicken automation system from Robert Chicken. 
+        I plan to use this system to start my own chicken restaurant. With the chicken automation system, 
+        I aim to reduce labor costs and consistently produce the same quality of chicken to ensure customer satisfaction. 
+        However, I am frustrated because operating the chicken cooking system is too difficult, 
+        and malfunctions occur frequently.
 
         [IMPORTANT] 
         - When you are finished with the conversation, respond with a single word 'FINISHED'
