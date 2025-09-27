@@ -18,10 +18,12 @@ from langchain_core.messages import AnyMessage
 from pydantic import BaseModel
 from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
-from langchain_teddynote.messages import stream_graph, invoke_graph, random_uuid
+from langchain_teddynote.messages import stream_graph, invoke_graph
 from langchain_teddynote.tools.tavily import TavilySearch
 from langchain_teddynote import logging
 from langchain_core.retrievers import BaseRetriever
+import uuid
+
 # LangSmith 추적을 설정합니다. https://smith.langchain.com
 # !pip install -qU langchain-teddynote
 load_dotenv()
@@ -166,8 +168,14 @@ def tools_condition(
 def get_check_pointer():
     return MemorySaver()
 
-def get_runnable_config(recursion_limit:int = 10, thread_id:str=random_uuid()):
-    print(thread_id)
+def get_random_uuid():
+    return str(uuid.uuid4())
+
+def get_runnable_config(recursion_limit:int = 10, thread_id:str=1):
+    """
+        recursion_limit : node 이동 횟수 제한
+        thread_id : 멀티턴 대화 위한 기억
+    """
     return RunnableConfig(recursion_limit=recursion_limit, configurable={"thread_id": thread_id})
 
 

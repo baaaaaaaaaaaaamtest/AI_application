@@ -1,6 +1,6 @@
 
 # Query Rewrite 프롬프트 정의
-from langchain_core.prompts import PromptTemplate
+from langchain_core.prompts import PromptTemplate,ChatPromptTemplate
 
 """
     PromptTemplate: 
@@ -14,7 +14,43 @@ from langchain_core.prompts import PromptTemplate
 """
 
 
-def get_answer_pt()->PromptTemplate:
+def get_prompt_assistant()->ChatPromptTemplate:
+    """
+        이전 대화를 모두 불러와 사용하는 유형의 챗봇
+    """
+    return ChatPromptTemplate(
+        [
+            ("system", "You are a customer support agent for an airline. Answer in Korean."),
+            ("placeholder", "{messages}"),
+        ]
+    )
+
+def get_prompt_persona()->ChatPromptTemplate:
+    """
+        가상의 환경에 놓인 사용자 
+    """
+    template ="""
+        You are a customer of an airline company. \
+        You are interacting with a user who is a customer support person. \
+
+        Your name is james
+
+        # Instructions:
+        You are trying to get a refund for the trip you took to Jeju Island. \
+        You want them to give you ALL the money back. This trip happened last year.
+
+        [IMPORTANT] 
+        - When you are finished with the conversation, respond with a single word 'FINISHED'
+        - You must speak in Korean.
+    """
+    return ChatPromptTemplate(
+        [
+            ("system",template),
+            ("placeholder","{messages}")
+        ]
+    )
+
+def get_prompt_answer()->PromptTemplate:
     """
         input_variables=['question','answer']\n
         Yes → 답변이 질문을 해결하거나 적절히 대답했다는 의미\n
@@ -37,7 +73,7 @@ def get_answer_pt()->PromptTemplate:
         """
     )
 
-def get_hallucination_pt()->PromptTemplate:
+def get_prompt_hallucination()->PromptTemplate:
     """
         input_variables=['answer','document']
         Yes → LLM의 답변이 검색된 사실에 의해 뒷받침된다.
@@ -60,7 +96,7 @@ def get_hallucination_pt()->PromptTemplate:
         """
     )
 
-def get_grade_pt()->PromptTemplate:
+def get_prompt_grade()->PromptTemplate:
     return PromptTemplate(
         input_variables=['question','document'],
         template="""
@@ -81,7 +117,7 @@ def get_grade_pt()->PromptTemplate:
             """
     )
 
-def get_routing_pt()->PromptTemplate:
+def get_prompt_routing()->PromptTemplate:
     return PromptTemplate(
         input_variables=['question'],
         template="""
@@ -101,7 +137,7 @@ def get_routing_pt()->PromptTemplate:
         """
     )
 
-def get_rag_pt()->PromptTemplate:
+def get_prompt_rag()->PromptTemplate:
     """
         Argument:
         input_variables=['context', 'question']
@@ -148,7 +184,7 @@ def get_rag_pt()->PromptTemplate:
         """
     )
 
-def get_re_write_pt()->PromptTemplate:
+def get_prompt_re_write()->PromptTemplate:
     return  PromptTemplate(
     input_variables=["question"],
     template="""
