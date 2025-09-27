@@ -1,6 +1,7 @@
 
 # Query Rewrite 프롬프트 정의
 from langchain_core.prompts import PromptTemplate,ChatPromptTemplate
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage, SystemMessage
 
 """
     PromptTemplate: 
@@ -23,6 +24,37 @@ from langchain_core.prompts import PromptTemplate,ChatPromptTemplate
         주로 대화형 AI에서 이전 대화 기록을 포함시켜 응답 맥락을 유지할 때 유용합니다.
 """
 
+
+def get_prompt_require_infomation()->ChatPromptTemplate:
+    """
+        사용자 요구사항 수집을 위한 시스템 메시지 템플릿
+    """
+    template = """
+    Your job is to gather complete and clear information from a user about the prompt template they want to create.
+
+    You must explicitly ask for each of the following, one by one, if not provided:
+    - The objective of the prompt
+    - The list of variables to include in the prompt template
+    - Any constraints about what the output must NOT do
+    - Any requirements the output MUST satisfy
+
+    If you cannot clearly identify any of these, politely ask the user to clarify or provide more details. 
+    Do NOT guess or assume missing information.
+
+    Only when all info is collected clearly, call the relevant tool and next step.
+
+
+    [IMPORTANT] 
+    Prompt generation must be done exclusively in the "prompt_generate node".
+    Your conversation must be in Korean.
+    The prompt you generate must be in English.
+    """
+    return ChatPromptTemplate(
+    [
+        ("system",template),
+        ("placeholder", "{placeholder}"),
+    ]
+)
 
 def get_prompt_assistant()->ChatPromptTemplate:
     """
@@ -260,3 +292,88 @@ def get_prompt_re_write()->PromptTemplate:
 )
 
 
+
+
+
+# 프롬프트를 생성하는 메타 프롬프트 정의(OpenAI 메타 프롬프트 엔지니어링 가이드 참고)
+META_PROMPT = """Given a task description or existing prompt, produce a detailed system prompt to guide a language model in completing the task effectively.
+
+# Guidelines
+
+- Understand the Task: Grasp the main objective, goals, requirements, constraints, and expected output.
+- Minimal Changes: If an existing prompt is provided, improve it only if it's simple. For complex prompts, enhance clarity and add missing elements without altering the original structure.
+- Reasoning Before Conclusions**: Encourage reasoning steps before any conclusions are reached. ATTENTION! If the user provides examples where the reasoning happens afterward, REVERSE the order! NEVER START EXAMPLES WITH CONCLUSIONS!
+    - Reasoning Order: Call out reasoning portions of the prompt and conclusion parts (specific fields by name). For each, determine the ORDER in which this is done, and whether it needs to be reversed.
+    - Conclusion, classifications, or results should ALWAYS appear last.
+- Examples: Include high-quality examples if helpful, using placeholders [in brackets] for complex elements.
+   - What kinds of examples may need to be included, how many, and whether they are complex enough to benefit from placeholders.
+- Clarity and Conciseness: Use clear, specific language. Avoid unnecessary instructions or bland statements.
+- Formatting: Use markdown features for readability. DO NOT USE ``` CODE BLOCKS UNLESS SPECIFICALLY REQUESTED.
+- Preserve User Content: If the input task or prompt includes extensive guidelines or examples, preserve them entirely, or as closely as possible. If they are vague, consider breaking down into sub-steps. Keep any details, guidelines, examples, variables, or placeholders provided by the user.
+- Constants: DO include constants in the prompt, as they are not susceptible to prompt injection. Such as guides, rubrics, and examples.
+- Output Format: Explicitly the most appropriate output format, in detail. This should include length and syntax (e.g. short sentence, paragraph, JSON, etc.)
+    - For tasks outputting well-defined or structured data (classification, JSON, etc.) bias toward outputting a JSON.
+    - JSON should never be wrapped in code blocks (```) unless explicitly requested.
+
+The final prompt you output should adhere to the following structure below. Do not include any additional commentary, only output the completed system prompt. SPECIFICALLY, do not include any additional messages at the start or end of the prompt. (e.g. no "---")
+
+[Concise instruction describing the task - this should be the first line in the prompt, no section header]
+
+[Additional details as needed.]
+
+[Optional sections with headings or bullet points for detailed steps.]
+
+# Steps [optional]
+
+[optional: a detailed breakdown of the steps necessary to accomplish the task]
+
+# Output Format
+
+[Specifically call out how the output should be formatted, be it response length, structure e.g. JSON, markdown, etc]
+
+[User given variables should be wrapped in {{brackets}}]
+
+<Question>
+{{question}}
+</Question>
+
+<Answer>
+{{answer}}
+</Answer>
+
+# Examples [optional]
+
+[Optional: 1-3 well-defined examples with placeholders if necessary. Clearly mark where examples start and end, and what the input and output are. User placeholders as necessary.]
+[If the examples are shorter than what a realistic example is expected to be, make a reference with () explaining how real examples should be longer / shorter / different. AND USE PLACEHOLDERS! ]
+
+# Notes [optional]
+
+[optional: edge cases, details, and an area to call or repeat out specific important considerations]
+
+# Based on the following requirements, write a good prompt template:
+
+{reqs}
+"""
+
+
+# 프롬프트 생성을 위한 메시지 가져오기 함수
+# 도구 호출 이후의 메시지만 가져옴
+def get_prompt_messages(messages: list):
+    # 도구 호출 정보를 저장할 변수 초기화
+    tool_call = None
+    # 도구 호출 이후의 메시지를 저장할 리스트 초기화
+    other_msgs = []
+    # 메시지 목록을 순회하며 도구 호출 및 기타 메시지 처리
+    for m in messages:
+        # AI 메시지 중 도구 호출이 있는 경우 도구 호출 정보 저장
+        if isinstance(m, AIMessage) and m.tool_calls:
+            tool_call = m.tool_calls[0]["args"]
+        # ToolMessage는 건너뜀
+        # elif isinstance(m, ToolMessage):
+        #     continue
+        # tool_call 객체가 실제로 존재하는지를 확인
+        elif tool_call is not None:
+            other_msgs.append(m)
+    print("other_msgs :           ",other_msgs)
+    # 시스템 메시지와 도구 호출 이후의 메시지를 결합하여 반환
+    return [SystemMessage(content=META_PROMPT.format(reqs=tool_call))] + other_msgs
