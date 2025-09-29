@@ -86,7 +86,7 @@ def get_retriever(docs:Document,embedding:Embeddings,k:int = 3)->BaseRetriever:
         이후 검색 가능하드로고 retriever 제공함
     """
     vector = FAISS.from_documents(documents=docs, embedding=embedding)
-    return vector.as_retriever(k=k)
+    return vector.as_retriever(search_kwargs={"k": k})
 
 def get_retriever_tool(retriever):
     return create_retriever_tool(
@@ -182,6 +182,20 @@ def get_runnable_config(recursion_limit:int = 10, thread_id:str=1):
 from langchain_teddynote.evaluator import GroundednessChecker
 
 def get_relevant(llm,target:str="question-retrieval"):
+    """
+        retrieval-answer : 검색 내용과 답변과의 상관성 -> 할루시네이션 
+
+        input_variables = ["context", "answer"]
+
+        question-answer : 질의와 답변간의 상관성
+
+        input_variables = = ["question", "answer"]
+
+        question-retrieval : 질의와 검색 내용 상관성
+
+        input_variables = ["question", "context"]
+
+    """
     return GroundednessChecker(llm=llm, target=target).create()
 
 def convert_docs_str(docs):
@@ -201,7 +215,23 @@ def convert_search_str(docs):
         ]
     )
 
+from xml.etree import ElementTree as ET
+from langchain.schema import Document
 
+def convert_str_to_docs(xml_str: str):
+    docs = []
+    root = ET.fromstring(f"<root>{xml_str}</root>")  # 루트 태그 추가해서 파싱
+    for doc_elem in root.findall("document"):
+        content = doc_elem.findtext("content")
+        source = doc_elem.findtext("source")
+        page = doc_elem.findtext("page")
+        metadata = {
+            "source": source,
+            "page": int(page) if page is not None else None
+        }
+        doc = Document(page_content=content, metadata=metadata)
+        docs.append(doc)
+    return docs
 
 
 def visualize_graph(graph, xray=False, ascii=False):

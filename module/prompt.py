@@ -23,6 +23,77 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage, System
 
         주로 대화형 AI에서 이전 대화 기록을 포함시켜 응답 맥락을 유지할 때 유용합니다.
 """
+def get_prompt_generate_markdown()->ChatPromptTemplate:
+
+    return ChatPromptTemplate.from_template(
+    """You are given the objective and the previously done steps. Your task is to generate a final report in markdown format.
+    Final report should be written in professional tone.
+
+    Your objective was this:
+
+    {input}
+
+    Your previously done steps(question and answer pairs):
+
+    {past_steps}
+
+    Generate a final report in markdown format. Write your response in Korean."""
+    )
+
+def get_prompt_replanner()->ChatPromptTemplate:
+    # 계획을 재수립하기 위한 프롬프트 정의
+    """
+        input_valuable=['input','plan','past_steps']
+    """
+    return ChatPromptTemplate.from_template(
+        """For the given objective, come up with a simple step by step plan. \
+    This plan should involve individual tasks, that if executed correctly will yield the correct answer. Do not add any superfluous steps. \
+    The result of the final step should be the final answer. Make sure that each step has all the information needed - do not skip steps.
+
+    Your objective was this:
+    {input}
+
+    Your original plan was this:
+    {plan}
+
+    You have currently done the follow steps:
+    {past_steps}
+
+    Update your plan accordingly. If no more steps are needed and you can return to the user, then respond with that. Otherwise, fill out the plan. Only add steps to the plan that still NEED to be done. Do not return previously done steps as part of the plan.
+
+    Answer in Korean."""
+    )
+
+def get_prompt_agent()->ChatPromptTemplate:
+    """
+        assistant 전용 prompt 
+    """
+    templete = """
+        You are a helpful assistant. Answer in Korean.
+    """
+    return ChatPromptTemplate.from_messages(
+        [
+            ("system",templete),
+            ("human", "{messages}")
+        ]
+    )
+
+def get_prompt_planner()->ChatPromptTemplate:
+    """ 
+        주어진 question을 기반으로 step 별 계획을 세우는 prompt
+        value = 'messages'
+    """
+    templete = """For the given objective, come up with a simple step by step plan. \
+    This plan should involve individual tasks, that if executed correctly will yield the correct answer. Do not add any superfluous steps. \
+    The result of the final step should be the final answer. Make sure that each step has all the information needed - do not skip steps.
+    Answer in Korean."""
+    return  ChatPromptTemplate.from_messages(
+        [
+            ("system",templete),
+            ("placeholder", "{messages}"),
+        ]
+    )
+
 
 
 def get_prompt_require_infomation()->ChatPromptTemplate:
@@ -237,6 +308,9 @@ def get_prompt_rag()->PromptTemplate:
     )
 
 def get_prompt_re_write()->PromptTemplate:
+    """
+        input_variables=["question"]
+    """
     return  PromptTemplate(
     input_variables=["question"],
     template="""
