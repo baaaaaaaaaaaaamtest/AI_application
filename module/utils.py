@@ -234,6 +234,47 @@ def convert_str_to_docs(xml_str: str):
     return docs
 
 
+def get_snapshot_data(graph,config,id):
+    """
+        Args:
+            graph : graph 객체
+            config : 이전 config
+            id :  대상 id
+    """
+    snapshot = graph.get_state(config)
+    messages = snapshot.values.get("messages", [])
+
+    target_id = id
+    target_message = None
+
+    for msg in messages:
+        # msg 객체가 id 속성을 갖고 있다면
+        if hasattr(msg, "id") and msg.id == target_id:
+            target_message = msg
+            break
+
+    if target_message:
+        print("찾은 메시지:", target_message)
+    else:
+        print("해당 id의 메시지가 없습니다.")
+
+from langchain_community.agent_toolkits import SQLDatabaseToolkit
+from langchain_community.utilities import SQLDatabase
+
+def get_db()->SQLDatabase:
+    return SQLDatabase.from_uri("sqlite:///Chinook.db")
+
+def get_db_tool(llm)-> SQLDatabaseToolkit:
+    """ 
+        llm : gpt or gemini
+    """
+    db = SQLDatabase.from_uri("sqlite:///Chinook.db")
+    toolkit = SQLDatabaseToolkit(db=db, llm=llm)
+    # SQLDatabaseToolkit에서 사용 가능한 도구 목록
+    return toolkit.get_tools()
+    
+
+
 def visualize_graph(graph, xray=False, ascii=False):
     from IPython.display import Image, display
     from langgraph.graph.state import CompiledStateGraph

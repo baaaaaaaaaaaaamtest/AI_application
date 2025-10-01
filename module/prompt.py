@@ -23,6 +23,115 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage, System
 
         주로 대화형 AI에서 이전 대화 기록을 포함시켜 응답 맥락을 유지할 때 유용합니다.
 """
+
+
+def get_prompt_query_check()->ChatPromptTemplate:
+    template = """You are a SQL expert with a strong attention to detail.
+    Double check the SQLite query for common mistakes, including:
+    - Using NOT IN with NULL values
+    - Using UNION when UNION ALL should have been used
+    - Using BETWEEN for exclusive ranges
+    - Data type mismatch in predicates
+    - Properly quoting identifiers
+    - Using the correct number of arguments for functions
+    - Casting to the correct data type
+    - Using the proper columns for joins
+
+    If there are any of the above mistakes, rewrite the query. If there are no mistakes, just reproduce the original query.
+
+    You will call the appropriate tool to execute the query after running this check."""
+    
+    return ChatPromptTemplate.from_messages(
+    [("system", template), ("placeholder", "{placeholder}")]
+    )
+
+
+def get_prompt_query_gen()->ChatPromptTemplate:
+    template = """You are a SQL expert with a strong attention to detail.
+
+    You can define SQL queries, analyze queries results and interpretate query results to response an answer.
+
+    Read the messages bellow and identify the user question, table schemas, query statement and query result, or error if they exist.
+
+    1. If there's not any query result that make sense to answer the question, create a syntactically correct SQLite query to answer the user question. DO NOT make any DML statements (INSERT, UPDATE, DELETE, DROP etc.) to the database.
+
+    2. If you create a query, response ONLY the query statement. For example, "SELECT id, name FROM pets;"
+
+    3. If a query was already executed, but there was an error. Response with the same error message you found. For example: "Error: Pets table doesn't exist"
+
+    4. If a query was already executed successfully interpretate the response and answer the questio following this pattern: Answer: <<question answer>>. For example: "Answer: There three cats registered as adopted"
+
+    5. Please add a semicolon (;) at the end of your SQL query.
+
+
+    Important :
+    
+    Finally, please answer in Korean
+    """
+    return ChatPromptTemplate.from_messages(
+    [("system", template), ("placeholder", "{placeholder}")]
+    )
+
+def get_prompt_multi_chart()->ChatPromptTemplate:
+
+    template = """
+            # System : 
+            You are a helpful AI assistant, collaborating with other assistants.  
+            You are working with a web search generator colleague.
+  
+            
+            # Step :
+            1. Receive information from another tool and based on that information, generate charts. 
+            2. When If your generate chart, you need more additional data is requests are made to a web tool colleague. 
+            3. Then, using this information, the Python REPL tool is used to generate the charts.
+
+            If you are unable to fully answer, that's OK, another assistant with different tools
+            will help where you left off. Execute what you can to make progress.
+        
+            # Human :
+            {messages}
+            
+            # Important :
+            If you or any of the other assistants have the final answer or deliverable,
+            prefix your response with FINAL ANSWER so the team knows to stop.
+            Write your response in Korean.
+          
+        """
+    
+    return ChatPromptTemplate.from_template(
+        template
+    )
+
+
+
+def get_prompt_multi_web()->ChatPromptTemplate:
+
+    template = """
+            # System : 
+            You are a helpful AI assistant, collaborating with other assistants.  
+            You are working with a chart generator colleague.
+
+            # Step :
+            1. identify the users requirements 
+            2. then use tool_calls to search for them with a web search tool. \n
+            3. Send the search results to another tool
+            4. If other tools makes additional requests, 
+            perform another web search and respond, ultimately completing the task.
+        
+            # Human :
+            {messages}
+            
+            # Important :
+            If you or any of the other assistants have the final answer or deliverable,
+            prefix your response with FINAL ANSWER so the team knows to stop.
+            Write your response in Korean.
+          
+        """
+    
+    return ChatPromptTemplate.from_template(
+        template
+    )
+
 def get_prompt_generate_markdown()->ChatPromptTemplate:
 
     return ChatPromptTemplate.from_template(
