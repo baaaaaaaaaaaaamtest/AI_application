@@ -29,7 +29,7 @@ import uuid
 load_dotenv()
 
 # 프로젝트 이름을 입력합니다.
-def strt_langsmith(name:str = "my_test_1"):
+def start_langsmith(name:str = "my_test_1"):
     """
         추적 가능하도록 lang_smith 활성화 
         

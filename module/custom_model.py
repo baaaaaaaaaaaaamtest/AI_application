@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Any, Literal, Union
+from typing import Any, Literal, Union,Annotated,List
 
 
 class RouteQuery(BaseModel):
@@ -44,3 +44,39 @@ class GradeAnswer(BaseModel):
     )
 
 
+class MusicPlan(BaseModel):
+    """Sorted steps to execute the plan"""
+    steps: Annotated[List[str],"Different steps to follow, should be in sorted order"]
+
+class MusicResponse(BaseModel):
+    """Response to user."""
+    # 사용자 응답
+    response: str
+
+class MusicAct(BaseModel):
+    """Action to perform."""
+    # LLM 이 판단하여 Reponse 인지 Plan 인지 선택하는 모델
+    # 만약 Response 인경우 response 변수에 답변 생성
+    # 그외 Plan 인경우 step 변수에 답변 생성
+    action: Union[MusicResponse, MusicPlan] = Field(
+        description="Action to perform. " \
+        "If you want to respond to user, use Response. "
+        "If you need to further use tools to get the answer, use Plan."
+    )
+
+
+class RouteModel(BaseModel):
+    """ 
+        retriver 된 데이터와 answer 간의 연관성 확인 
+        할루시네이션 : 모델이 상상력을통해 생성한 답변
+    
+    """
+    datasource : Literal['web_search_agent', 'pdf_loader_agent','db_agent','conversation_agent'] = Field(
+        ...,
+        description = '' \
+        '`web_search_agent` is web search possible. '
+        '`pdf_loader_agent` is use vectorstore.' \
+        '`db_agent` is use database.' \
+        '`conversation_agent` is everyday interactive talk agents '
+
+    )

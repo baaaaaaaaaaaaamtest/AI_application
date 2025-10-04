@@ -24,7 +24,27 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage, System
         주로 대화형 AI에서 이전 대화 기록을 포함시켜 응답 맥락을 유지할 때 유용합니다.
 """
 
+def get_prompt_start_node()->ChatPromptTemplate:
+    template = """
+        You have three agents :
 
+        1. The first agent is the agent for web search. Most requests can be resolved through web search
+
+        2. The second agent is pdf loader, which is used to search for pre-vectorized data or internal data
+
+        3. The last agent is the Database agent. To provide music services, we can use a database that can manage, inquire, and manage the sales performance of artists and music.
+
+        It is very important to identify the user's requirements and use an agent that fits the situation
+        
+        # Important :
+        If the remaining requirements no longer exist,
+        prefix your response with FINAL ANSWER so the team knows to stop.
+        Write your response in Korean.
+    """
+    return ChatPromptTemplate.from_messages(
+    [("system", template), ("placeholder", "{placeholder}")]
+    )
+    
 def get_prompt_query_check()->ChatPromptTemplate:
     template = """You are a SQL expert with a strong attention to detail.
     Double check the SQLite query for common mistakes, including:
@@ -103,21 +123,77 @@ def get_prompt_multi_chart()->ChatPromptTemplate:
     )
 
 
+def get_prompt_web()->ChatPromptTemplate:
+    template = """
+            # System : 
+            You are an AI agent specialized in web search. 
+            Your mission is to understand users' queries, generate the most efficient search queries, and provide accurate, reliable, and up-to-date information.
+
+            Follow these guidelines:
+
+            1. **Question Interpretation**:
+
+            Clearly analyze the user's intent and extract core keywords.
+            Restructure ambiguous questions into search-friendly terms.
+
+            2. **Search Query Generation**:
+            - Create search terms that are as concise and relevant as possible.
+            - Consider synonyms and related keywords to experiment with different queries.
+            
+            3. **Search Results Summary**:
+            - Concisely summarize the key facts, figures, and cited sources from the search results.
+            - Eliminate unnecessary advertisements, commercial noise, and irrelevant sentences.
+            - Ensure your answers are up-to-date and reliable.
+
+            4. **Output Format**:
+            - Concise summary
+            - Bulleted summary of key points
+
+            Always provide objective, source-based information.
+            Don't guess; only provide verifiable information.
+            
+        
+            # Human :
+            {messages}
+            
+            # Important :
+            Write your response in Korean.
+          
+        """
+    
+    return ChatPromptTemplate.from_template(
+        template
+    )
+
 
 def get_prompt_multi_web()->ChatPromptTemplate:
 
     template = """
             # System : 
             You are a helpful AI assistant, collaborating with other assistants.  
-            You are working with a chart generator colleague.
-
-            # Step :
-            1. identify the users requirements 
-            2. then use tool_calls to search for them with a web search tool. \n
-            3. Send the search results to another tool
-            4. If other tools makes additional requests, 
-            perform another web search and respond, ultimately completing the task.
+            You are working with a pdf loader agent colleague.
         
+            # Human :
+            {messages}
+            
+            # Important :
+            If you or any of the other assistants have the final answer or deliverable,
+            prefix your response with FINAL ANSWER so the team knows to stop.
+            Write your response in Korean.
+          
+        """
+    
+    return ChatPromptTemplate.from_template(
+        template
+    )
+
+def get_prompt_multi_loader()->ChatPromptTemplate:
+
+    template = """
+            # System : 
+            You are a helpful AI assistant, collaborating with other assistants.  
+            You are working with a web search agent colleague.
+
             # Human :
             {messages}
             
@@ -148,16 +224,12 @@ def get_prompt_generate_markdown()->ChatPromptTemplate:
 
     Generate a final report in markdown format. Write your response in Korean."""
     )
-
 def get_prompt_replanner()->ChatPromptTemplate:
-    # 계획을 재수립하기 위한 프롬프트 정의
-    """
-        input_valuable=['input','plan','past_steps']
-    """
     return ChatPromptTemplate.from_template(
         """For the given objective, come up with a simple step by step plan. \
     This plan should involve individual tasks, that if executed correctly will yield the correct answer. Do not add any superfluous steps. \
-    The result of the final step should be the final answer. Make sure that each step has all the information needed - do not skip steps.
+    The result of the final step should be the final answer. 
+    Make sure that each step has all the information needed - do not skip steps.
 
     Your objective was this:
     {input}
@@ -168,17 +240,57 @@ def get_prompt_replanner()->ChatPromptTemplate:
     You have currently done the follow steps:
     {past_steps}
 
-    Update your plan accordingly. If no more steps are needed and you can return to the user, then respond with that. Otherwise, fill out the plan. Only add steps to the plan that still NEED to be done. Do not return previously done steps as part of the plan.
+    Do not return previously done steps as part of the plan.
+    If there is a remaining plan, remove the currently executed plan and write the remaining plan in MusicPlan.
+    If no more steps are needed and you can return to the user, then respond with that.
+    
 
     Answer in Korean."""
     )
+    
+# def get_prompt_replanner()->ChatPromptTemplate:
+#     # 계획을 재수립하기 위한 프롬프트 정의
+#     """
+#         input_valuable=['input','plan','past_steps']
+#     """
+#     return ChatPromptTemplate.from_template(
+#         """\
+#     This plan should involve individual tasks, that if executed correctly will yield the correct answer. Do not add any superfluous steps. \
+#     The result of the final step should be the final answer. Make sure that each step has all the information needed - do not skip steps.
+
+#     Your objective was this:
+#     {input}
+
+#     Your original plan was this:
+#     {plan}
+
+#     You have currently done the follow steps:
+#     {past_steps}
+
+#     Update your plan accordingly. If no more steps are needed and you can return to the user, then respond with that. 
+    
+#     Otherwise, We will continue to keep our initial plans unchanged. Do not return previously done steps as part of the plan.
+
+#     Answer in Korean."""
+#     )
 
 def get_prompt_agent()->ChatPromptTemplate:
     """
         assistant 전용 prompt 
     """
     templete = """
-        You are a helpful assistant. Answer in Korean.
+        # System :
+        You are a helpful assistant. Almost out service user live in Seoul, South korea
+
+        1. If you want search weather, you can choice use about `weather_search_tool`
+
+        2. If you want search artist infomation, you can choice use about `artist_news_search_tool`
+
+        3. If you do a query in DB, make sure to use `sql_db_list_tables` first and then use `sql_db_schema` before creating query
+
+        # Important :
+        Answer in Korean.
+        
     """
     return ChatPromptTemplate.from_messages(
         [
@@ -187,12 +299,43 @@ def get_prompt_agent()->ChatPromptTemplate:
         ]
     )
 
+def get_prompt_music_planner()->ChatPromptTemplate:
+    """ 
+        주어진 question을 기반으로 step 별 계획을 세우는 prompt
+        value = 'messages'
+    """
+    templete = """
+    Infomation : 
+    I live in Seoul,KR
+    
+    System : 
+    For the given objective, come up with a simple step by step plan. \
+    This plan should involve individual tasks, that if executed correctly will yield the correct answer. Do not add any superfluous steps. \
+    The result of the final step should be the final answer. Make sure that each step has all the information needed - do not skip steps.
+
+    Example :
+    Question: Please recommend a song that fits today's weather
+    Step 1. : I made a list of 20 songs that go well with today's music
+    Step 2. : Verify that the music exists in our service database
+    Step 3. : Select and add the final list
+
+
+    Answer in Korean."""
+    return  ChatPromptTemplate.from_messages(
+        [
+            ("system",templete),
+            ("placeholder", "{messages}"),
+        ]
+    )
+
 def get_prompt_planner()->ChatPromptTemplate:
     """ 
         주어진 question을 기반으로 step 별 계획을 세우는 prompt
         value = 'messages'
     """
-    templete = """For the given objective, come up with a simple step by step plan. \
+    templete = """
+    System : 
+    For the given objective, come up with a simple step by step plan. \
     This plan should involve individual tasks, that if executed correctly will yield the correct answer. Do not add any superfluous steps. \
     The result of the final step should be the final answer. Make sure that each step has all the information needed - do not skip steps.
     Answer in Korean."""
