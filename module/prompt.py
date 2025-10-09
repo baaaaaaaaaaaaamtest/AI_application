@@ -1,6 +1,5 @@
-
 # Query Rewrite 프롬프트 정의
-from langchain_core.prompts import PromptTemplate,ChatPromptTemplate
+from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage, SystemMessage
 
 """
@@ -24,9 +23,37 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage, System
         주로 대화형 AI에서 이전 대화 기록을 포함시켜 응답 맥락을 유지할 때 유용합니다.
 """
 
-def get_prompt_start_node()->ChatPromptTemplate:
+
+def get_prompt_routing_node() -> ChatPromptTemplate:
+    """
+    web search, sql, pdf 등 어떤 agent 를 선택할지 결정하게 지원하는 프롬프트
+
+    If the remaining requirements no longer exist,
+    prefix your response with FINAL ANSWER so the team knows to stop.
+    """
     template = """
-        You have three agents :
+        You are an AI assistant
+        If you need music information, search Genie Music and get information
+        You have some agents :
+
+        1. The first agent is the agent for web search. Most requests can be resolved through web search
+
+        2. The third agent is the Database agent. To provide music services, we can use a database that can manage, inquire, and manage the sales performance of artists and music.
+        
+        It is very important to identify the user's requirements and use an agent that fits the situation
+        
+        # Important :
+        I want you to judge yourself to bring information without asking the user for additional information, bring information, and recommend it.
+        Write your response in Korean.
+    """
+    return ChatPromptTemplate.from_messages(
+        [("system", template), ("placeholder", "{placeholder}")]
+    )
+
+
+def get_prompt_start_node() -> ChatPromptTemplate:
+    template = """
+        You have some agents :
 
         1. The first agent is the agent for web search. Most requests can be resolved through web search
 
@@ -42,10 +69,11 @@ def get_prompt_start_node()->ChatPromptTemplate:
         Write your response in Korean.
     """
     return ChatPromptTemplate.from_messages(
-    [("system", template), ("placeholder", "{placeholder}")]
+        [("system", template), ("placeholder", "{placeholder}")]
     )
-    
-def get_prompt_query_check()->ChatPromptTemplate:
+
+
+def get_prompt_query_check() -> ChatPromptTemplate:
     template = """You are a SQL expert with a strong attention to detail.
     Double check the SQLite query for common mistakes, including:
     - Using NOT IN with NULL values
@@ -60,13 +88,13 @@ def get_prompt_query_check()->ChatPromptTemplate:
     If there are any of the above mistakes, rewrite the query. If there are no mistakes, just reproduce the original query.
 
     You will call the appropriate tool to execute the query after running this check."""
-    
+
     return ChatPromptTemplate.from_messages(
-    [("system", template), ("placeholder", "{placeholder}")]
+        [("system", template), ("placeholder", "{placeholder}")]
     )
 
 
-def get_prompt_query_gen()->ChatPromptTemplate:
+def get_prompt_query_gen() -> ChatPromptTemplate:
     template = """You are a SQL expert with a strong attention to detail.
 
     You can define SQL queries, analyze queries results and interpretate query results to response an answer.
@@ -83,16 +111,13 @@ def get_prompt_query_gen()->ChatPromptTemplate:
 
     5. Please add a semicolon (;) at the end of your SQL query.
 
-
-    Important :
-    
-    Finally, please answer in Korean
     """
     return ChatPromptTemplate.from_messages(
-    [("system", template), ("placeholder", "{placeholder}")]
+        [("system", template), ("placeholder", "{placeholder}")]
     )
 
-def get_prompt_multi_chart()->ChatPromptTemplate:
+
+def get_prompt_multi_chart() -> ChatPromptTemplate:
 
     template = """
             # System : 
@@ -117,13 +142,11 @@ def get_prompt_multi_chart()->ChatPromptTemplate:
             Write your response in Korean.
           
         """
-    
-    return ChatPromptTemplate.from_template(
-        template
-    )
+
+    return ChatPromptTemplate.from_template(template)
 
 
-def get_prompt_web()->ChatPromptTemplate:
+def get_prompt_web() -> ChatPromptTemplate:
     template = """
             # System : 
             You are an AI agent specialized in web search. 
@@ -160,13 +183,11 @@ def get_prompt_web()->ChatPromptTemplate:
             Write your response in Korean.
           
         """
-    
-    return ChatPromptTemplate.from_template(
-        template
-    )
+
+    return ChatPromptTemplate.from_template(template)
 
 
-def get_prompt_multi_web()->ChatPromptTemplate:
+def get_prompt_multi_web() -> ChatPromptTemplate:
 
     template = """
             # System : 
@@ -182,12 +203,11 @@ def get_prompt_multi_web()->ChatPromptTemplate:
             Write your response in Korean.
           
         """
-    
-    return ChatPromptTemplate.from_template(
-        template
-    )
 
-def get_prompt_multi_loader()->ChatPromptTemplate:
+    return ChatPromptTemplate.from_template(template)
+
+
+def get_prompt_multi_loader() -> ChatPromptTemplate:
 
     template = """
             # System : 
@@ -203,15 +223,14 @@ def get_prompt_multi_loader()->ChatPromptTemplate:
             Write your response in Korean.
           
         """
-    
-    return ChatPromptTemplate.from_template(
-        template
-    )
 
-def get_prompt_generate_markdown()->ChatPromptTemplate:
+    return ChatPromptTemplate.from_template(template)
+
+
+def get_prompt_generate_markdown() -> ChatPromptTemplate:
 
     return ChatPromptTemplate.from_template(
-    """You are given the objective and the previously done steps. Your task is to generate a final report in markdown format.
+        """You are given the objective and the previously done steps. Your task is to generate a final report in markdown format.
     Final report should be written in professional tone.
 
     Your objective was this:
@@ -224,30 +243,28 @@ def get_prompt_generate_markdown()->ChatPromptTemplate:
 
     Generate a final report in markdown format. Write your response in Korean."""
     )
-def get_prompt_replanner()->ChatPromptTemplate:
+
+
+def get_prompt_replanner() -> ChatPromptTemplate:
     return ChatPromptTemplate.from_template(
-        """For the given objective, come up with a simple step by step plan. \
-    This plan should involve individual tasks, that if executed correctly will yield the correct answer. Do not add any superfluous steps. \
-    The result of the final step should be the final answer. 
-    Make sure that each step has all the information needed - do not skip steps.
+        """
+        # System :
+        Do not add new plans if no additional plans are needed to achieve the objectives by analyzing the original objectives and already organized plans and current outcomes
+        Do not return previously done steps as part of the plan.
 
-    Your objective was this:
-    {input}
+        # Your objective was this:
+        {input}
 
-    Your original plan was this:
-    {plan}
+        # Your original plan was this:
+        {plan}
 
-    You have currently done the follow steps:
-    {past_steps}
+        # You have currently done the follow steps:
+        {past_steps}
 
-    Do not return previously done steps as part of the plan.
-    If there is a remaining plan, remove the currently executed plan and write the remaining plan in MusicPlan.
-    If no more steps are needed and you can return to the user, then respond with that.
-    
-
-    Answer in Korean."""
+        Answer in Korean."""
     )
-    
+
+
 # def get_prompt_replanner()->ChatPromptTemplate:
 #     # 계획을 재수립하기 위한 프롬프트 정의
 #     """
@@ -267,16 +284,17 @@ def get_prompt_replanner()->ChatPromptTemplate:
 #     You have currently done the follow steps:
 #     {past_steps}
 
-#     Update your plan accordingly. If no more steps are needed and you can return to the user, then respond with that. 
-    
+#     Update your plan accordingly. If no more steps are needed and you can return to the user, then respond with that.
+
 #     Otherwise, We will continue to keep our initial plans unchanged. Do not return previously done steps as part of the plan.
 
 #     Answer in Korean."""
 #     )
 
-def get_prompt_agent()->ChatPromptTemplate:
+
+def get_prompt_agent() -> ChatPromptTemplate:
     """
-        assistant 전용 prompt 
+    assistant 전용 prompt
     """
     templete = """
         # System :
@@ -293,22 +311,23 @@ def get_prompt_agent()->ChatPromptTemplate:
         
     """
     return ChatPromptTemplate.from_messages(
-        [
-            ("system",templete),
-            ("human", "{messages}")
-        ]
+        [("system", templete), ("human", "{messages}")]
     )
 
-def get_prompt_music_planner()->ChatPromptTemplate:
-    """ 
-        주어진 question을 기반으로 step 별 계획을 세우는 prompt
-        value = 'messages'
+
+def get_prompt_music_planner() -> ChatPromptTemplate:
+    """
+    주어진 question을 기반으로 step 별 계획을 세우는 prompt
+    value = 'messages'
     """
     templete = """
     Infomation : 
     I live in Seoul,KR
+    you must call `PlanListModel`
+
     
     System : 
+    If you don't need a plan, output the question in `steps`.
     For the given objective, come up with a simple step by step plan. \
     This plan should involve individual tasks, that if executed correctly will yield the correct answer. Do not add any superfluous steps. \
     The result of the final step should be the final answer. Make sure that each step has all the information needed - do not skip steps.
@@ -319,19 +338,23 @@ def get_prompt_music_planner()->ChatPromptTemplate:
     Step 2. : Verify that the music exists in our service database
     Step 3. : Select and add the final list
 
-
+    Answer : 
+    stpes : ["Sample 1","Sample 2","Sample 3"]
+    If you don't need a plan, output the question in `steps`.
+    If there is no plan, output the question in `steps`.
     Answer in Korean."""
-    return  ChatPromptTemplate.from_messages(
+    return ChatPromptTemplate.from_messages(
         [
-            ("system",templete),
+            ("system", templete),
             ("placeholder", "{messages}"),
         ]
     )
 
-def get_prompt_planner()->ChatPromptTemplate:
-    """ 
-        주어진 question을 기반으로 step 별 계획을 세우는 prompt
-        value = 'messages'
+
+def get_prompt_planner() -> ChatPromptTemplate:
+    """
+    주어진 question을 기반으로 step 별 계획을 세우는 prompt
+    value = 'messages'
     """
     templete = """
     System : 
@@ -339,18 +362,17 @@ def get_prompt_planner()->ChatPromptTemplate:
     This plan should involve individual tasks, that if executed correctly will yield the correct answer. Do not add any superfluous steps. \
     The result of the final step should be the final answer. Make sure that each step has all the information needed - do not skip steps.
     Answer in Korean."""
-    return  ChatPromptTemplate.from_messages(
+    return ChatPromptTemplate.from_messages(
         [
-            ("system",templete),
+            ("system", templete),
             ("placeholder", "{messages}"),
         ]
     )
 
 
-
-def get_prompt_require_infomation()->ChatPromptTemplate:
+def get_prompt_require_infomation() -> ChatPromptTemplate:
     """
-        사용자 요구사항 수집을 위한 시스템 메시지 템플릿
+    사용자 요구사항 수집을 위한 시스템 메시지 템플릿
     """
     template = """
     Your job is to gather complete and clear information from a user about the prompt template they want to create.
@@ -373,35 +395,34 @@ def get_prompt_require_infomation()->ChatPromptTemplate:
     The prompt you generate must be in English.
     """
     return ChatPromptTemplate(
-    [
-        ("system",template),
-        ("placeholder", "{placeholder}"),
-    ]
-)
+        [
+            ("system", template),
+            ("placeholder", "{placeholder}"),
+        ]
+    )
 
-def get_prompt_assistant()->ChatPromptTemplate:
+
+def get_prompt_assistant() -> ChatPromptTemplate:
     """
-        이전 대화를 모두 불러와 사용하는 유형의 챗봇
+    이전 대화를 모두 불러와 사용하는 유형의 챗봇
     """
     system_template = """
-        You are a service support chatbot for the "Robert Chicken" system, 
-        which is an automated chicken preparation and service system powered by a collaborative robot.  \n
-        You can provide detailed information about system introduction, operation methods, troubleshooting, and cleaning procedures.  \n
-        All responses must be professional yet customer-friendly,
-        and you must always answer in Korean.  \n
+        You are a helpful assistant. Almost out service user live in Seoul, South korea
+        you must always answer in Korean.  \n
     """
     return ChatPromptTemplate(
         [
-            ("system",system_template),
+            ("system", system_template),
             ("placeholder", "{messages}"),
         ]
     )
 
-def get_prompt_persona()->ChatPromptTemplate:
+
+def get_prompt_persona() -> ChatPromptTemplate:
     """
-        가상의 환경에 놓인 사용자 
+    가상의 환경에 놓인 사용자
     """
-    template ="""
+    template = """
         You are a customer of an Robert Chicken. \
         You are interacting with a user who is a customer support person. \
 
@@ -418,44 +439,35 @@ def get_prompt_persona()->ChatPromptTemplate:
         - When you are finished with the conversation, respond with a single word 'FINISHED'
         - You must speak in Korean.
     """
-    return ChatPromptTemplate(
-        [
-            ("system",template),
-            ("placeholder","{messages}")
-        ]
-    )
+    return ChatPromptTemplate([("system", template), ("placeholder", "{messages}")])
 
-def get_prompt_answer()->PromptTemplate:
+
+def get_prompt_answer():
+    prompt = """ 
+    You are a DB expert
+    Print your final answer based on the query you ran previously
+
+    # select:
+    Map the information obtained from the select execution so that the user can easily understand it
+
+    # User Request : 
+    {current_steps}
+    
+    # placeholder:
+    {placeholder}
+
     """
-        input_variables=['question','answer']\n
-        Yes → 답변이 질문을 해결하거나 적절히 대답했다는 의미\n
-        No → 답변이 질문을 해결하지 못했거나 엉뚱한 답변이라는 의미\n
+    return ChatPromptTemplate.from_template(prompt)
+
+
+def get_prompt_hallucination() -> PromptTemplate:
+    """
+    input_variables=['answer','document']
+    Yes → LLM의 답변이 검색된 사실에 의해 뒷받침된다.
+    No → LLM의 답변이 검색된 사실에 의해 뒷받침되지 않는다. -> 재 생성
     """
     return PromptTemplate(
-        input_variables=['question','answer'],
-        template="""
-            # System :
-            You are a grader assessing whether an answer addresses / resolves a question \n 
-            Give a binary score 'yes' or 'no'. Yes' means that the answer resolves the question.
-
-            # Human :
-            User question: 
-            \n\n 
-            {question} 
-            \n\n 
-            LLM generation: 
-            {answer}
-        """
-    )
-
-def get_prompt_hallucination()->PromptTemplate:
-    """
-        input_variables=['answer','document']
-        Yes → LLM의 답변이 검색된 사실에 의해 뒷받침된다.
-        No → LLM의 답변이 검색된 사실에 의해 뒷받침되지 않는다. -> 재 생성
-    """
-    return PromptTemplate(
-        input_variables=['answer','document'],
+        input_variables=["answer", "document"],
         template="""
             # System : 
             You are a grader assessing whether an LLM generation is grounded in / supported by a set of retrieved facts. \n 
@@ -468,12 +480,13 @@ def get_prompt_hallucination()->PromptTemplate:
             \n\n 
             LLM generation: 
             {answer}
-        """
+        """,
     )
 
-def get_prompt_grade()->PromptTemplate:
+
+def get_prompt_grade() -> PromptTemplate:
     return PromptTemplate(
-        input_variables=['question','document'],
+        input_variables=["question", "document"],
         template="""
             # System :
             You are a grader assessing relevance of a retrieved document to a user question. \n 
@@ -489,12 +502,13 @@ def get_prompt_grade()->PromptTemplate:
             User Question :
             \n\n
             {question}
-            """
+            """,
     )
 
-def get_prompt_routing()->PromptTemplate:
+
+def get_prompt_routing() -> PromptTemplate:
     return PromptTemplate(
-        input_variables=['question'],
+        input_variables=["question"],
         template="""
             # System : 
 
@@ -509,17 +523,18 @@ def get_prompt_routing()->PromptTemplate:
             {question}
 
             # Your final ANSWER to the user's QUESTION:
-        """
+        """,
     )
 
-def get_prompt_rag()->PromptTemplate:
+
+def get_prompt_rag() -> PromptTemplate:
     """
-        Argument:
-        input_variables=['context', 'question']
+    Argument:
+    input_variables=['context', 'question']
     """
     return PromptTemplate(
-    input_variables=['context', 'question'],
-    template="""
+        input_variables=["context", "question"],
+        template="""
 
         You are an AI assistant specializing in Question-Answering (QA) tasks within a Retrieval-Augmented Generation (RAG) system. 
         Your primary mission is to answer questions based on provided context or chat history.
@@ -556,16 +571,17 @@ def get_prompt_rag()->PromptTemplate:
         {context}
 
         # Your final ANSWER to the user's QUESTION:
-        """
+        """,
     )
 
-def get_prompt_re_write()->PromptTemplate:
+
+def get_prompt_re_write() -> PromptTemplate:
     """
-        input_variables=["question"]
+    input_variables=["question"]
     """
-    return  PromptTemplate(
-    input_variables=["question"],
-    template="""
+    return PromptTemplate(
+        input_variables=["question"],
+        template="""
         Reformulate the given question to enhance its effectiveness for vectorstore retrieval.
         - Analyze the initial question to identify areas for improvement such as specificity, clarity, and relevance.
         - Consider the context and potential keywords that would optimize retrieval.
@@ -614,11 +630,7 @@ def get_prompt_re_write()->PromptTemplate:
         # Here is the original question that needs to be rewritten:
         {question}
         """,
-    
-)
-
-
-
+    )
 
 
 # 프롬프트를 생성하는 메타 프롬프트 정의(OpenAI 메타 프롬프트 엔지니어링 가이드 참고)
@@ -700,6 +712,51 @@ def get_prompt_messages(messages: list):
         # tool_call 객체가 실제로 존재하는지를 확인
         elif tool_call is not None:
             other_msgs.append(m)
-    print("other_msgs :           ",other_msgs)
+    print("other_msgs :           ", other_msgs)
     # 시스템 메시지와 도구 호출 이후의 메시지를 결합하여 반환
     return [SystemMessage(content=META_PROMPT.format(reqs=tool_call))] + other_msgs
+
+
+def get_prompt_relevant_query():
+    prompt = """ 
+    # System :
+    You are a database expert
+    Determines the association between user requests and query execution results
+    Please answer yes or no by confirming that the answer is relevant to the user's request
+
+    # User Request:
+    {current_steps}
+    # AI Answer Query:
+    {query}
+
+    # Important : 
+    response  is only `yes` or `no`
+    """
+
+    return ChatPromptTemplate.from_template(prompt)
+
+
+def get_prompt_query_gen() -> ChatPromptTemplate:
+    prompt = """You are a SQL expert with a strong attention to detail.
+
+    You can define SQL queries, analyze queries results and interpretate query results to response an answer.
+
+    Read the messages bellow and identify the user question, table schemas, query statement and query result, or error if they exist.
+
+    1. If there's not any query result that make sense to answer the question, create a syntactically correct SQLite query to answer the user question. DO NOT make any DML statements (INSERT, UPDATE, DELETE, DROP etc.) to the database.
+
+    2. If you create a query, response ONLY the query statement. For example, "SELECT id, name FROM pets;"
+
+    3. If a query was already executed, but there was an error. Response with the same error message you found. For example: "Error: Pets table doesn't exist"
+
+    4. If a query was already executed successfully interpretate the response and answer the questio following this pattern: Answer: <<question answer>>. For example: "Answer: There three cats registered as adopted"
+
+    5. Please add a semicolon (;) at the end of your SQL query.
+
+    # User Request : 
+    {current_steps}
+
+    # placeholder:
+    {placeholder}
+    """
+    return ChatPromptTemplate.from_template(prompt)
