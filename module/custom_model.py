@@ -83,12 +83,15 @@ class RouteModel(BaseModel):
 
     """
 
-    datasource: Literal["web_search_agent", "db_agent", "no_agent"] = Field(
+    datasource: Literal[
+        "web_search_agent", "db_agent", "data_analysis", "conversation_agent"
+    ] = Field(
         ...,
         description=""
         "`web_search_agent` is web search possible. "
         "`db_agent` is use database."
-        "`no_agent` is normal conversation.",
+        "`data_analysis` is use python code."
+        "`conversation_agent` is normal conversation.",
     )
 
     # datasource: Literal[

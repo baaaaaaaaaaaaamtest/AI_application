@@ -34,16 +34,23 @@ def get_prompt_routing_node() -> ChatPromptTemplate:
     template = """
         You are an AI assistant
         If you need music information, search Genie Music and get information
+        
         You have some agents :
-
         1. The first agent is the agent for web search. Most requests can be resolved through web search
 
-        2. The third agent is the Database agent. To provide music services, we can use a database that can manage, inquire, and manage the sales performance of artists and music.
+        2. The second agent is the Database agent. To provide music services, we can use a database that can manage, inquire, and manage the sales performance of artists and music.
         
+        3. The third agent can be visualized through data analysis requests and comparisons. By generating the Python code, it is possible to generate bar charts, donut charts, and line graphs based on this.
+         
+        4. other 'conversation_agent'.Agent that conducts a normal conversation. 
         It is very important to identify the user's requirements and use an agent that fits the situation
         
+        # Next Task : 
+        {next_task}
+
         # Important :
-        I want you to judge yourself to bring information without asking the user for additional information, bring information, and recommend it.
+        We are going to solve the given `next_task` using agent.
+        Make sure to solve the problem without asking the user for additional information.
         Write your response in Korean.
     """
     return ChatPromptTemplate.from_messages(
@@ -89,29 +96,6 @@ def get_prompt_query_check() -> ChatPromptTemplate:
 
     You will call the appropriate tool to execute the query after running this check."""
 
-    return ChatPromptTemplate.from_messages(
-        [("system", template), ("placeholder", "{placeholder}")]
-    )
-
-
-def get_prompt_query_gen() -> ChatPromptTemplate:
-    template = """You are a SQL expert with a strong attention to detail.
-
-    You can define SQL queries, analyze queries results and interpretate query results to response an answer.
-
-    Read the messages bellow and identify the user question, table schemas, query statement and query result, or error if they exist.
-
-    1. If there's not any query result that make sense to answer the question, create a syntactically correct SQLite query to answer the user question. DO NOT make any DML statements (INSERT, UPDATE, DELETE, DROP etc.) to the database.
-
-    2. If you create a query, response ONLY the query statement. For example, "SELECT id, name FROM pets;"
-
-    3. If a query was already executed, but there was an error. Response with the same error message you found. For example: "Error: Pets table doesn't exist"
-
-    4. If a query was already executed successfully interpretate the response and answer the questio following this pattern: Answer: <<question answer>>. For example: "Answer: There three cats registered as adopted"
-
-    5. Please add a semicolon (;) at the end of your SQL query.
-
-    """
     return ChatPromptTemplate.from_messages(
         [("system", template), ("placeholder", "{placeholder}")]
     )
@@ -177,7 +161,7 @@ def get_prompt_web() -> ChatPromptTemplate:
             
         
             # Human :
-            {messages}
+            {current_steps}
             
             # Important :
             Write your response in Korean.
@@ -249,13 +233,14 @@ def get_prompt_replanner() -> ChatPromptTemplate:
     return ChatPromptTemplate.from_template(
         """
         # System :
-        Do not add new plans if no additional plans are needed to achieve the objectives by analyzing the original objectives and already organized plans and current outcomes
-        Do not return previously done steps as part of the plan.
+        If you determine that you already objective achieve the entire remaining plan, you can remove all remaining plans.
+        You can remove any remaining plans if they overlap or are unnecessary.
+
 
         # Your objective was this:
         {input}
 
-        # Your original plan was this:
+        # Your remaining plan was this:
         {plan}
 
         # You have currently done the follow steps:
@@ -321,25 +306,24 @@ def get_prompt_music_planner() -> ChatPromptTemplate:
     value = 'messages'
     """
     templete = """
-    Infomation : 
+   Infomation : 
     I live in Seoul,KR
-    you must call `PlanListModel`
-
     
     System : 
-    If you don't need a plan, output the question in `steps`.
+    you must call `PlanListModel`
+    If it's a simple conversation, I'm not going to plan it.
+    If you don't need a plan, output the question in `PlanListModel.steps`.
     For the given objective, come up with a simple step by step plan. \
-    This plan should involve individual tasks, that if executed correctly will yield the correct answer. Do not add any superfluous steps. \
-    The result of the final step should be the final answer. Make sure that each step has all the information needed - do not skip steps.
+    Do not set steps unnecessarily or too detailed.
+    The result of the final step should be the final answer. 
 
     Example :
     Question: Please recommend a song that fits today's weather
-    Step 1. : I made a list of 20 songs that go well with today's music
-    Step 2. : Verify that the music exists in our service database
-    Step 3. : Select and add the final list
+    Step 1. : 
+    Step 2. :
 
     Answer : 
-    stpes : ["Sample 1","Sample 2","Sample 3"]
+    stpes : ["Sample 1","Sample 2"]
     If you don't need a plan, output the question in `steps`.
     If there is no plan, output the question in `steps`.
     Answer in Korean."""
@@ -453,8 +437,11 @@ def get_prompt_answer():
     # User Request : 
     {current_steps}
     
+    # Summary of conversation earlier :
+    {summary}
+
     # placeholder:
-    {placeholder}
+    {messages}
 
     """
     return ChatPromptTemplate.from_template(prompt)
@@ -753,10 +740,43 @@ def get_prompt_query_gen() -> ChatPromptTemplate:
 
     5. Please add a semicolon (;) at the end of your SQL query.
 
+    6. If you create a select query, please create information such as some columns of the object and basic names that a person can analyze
+
+    7. If you run select, you must also include additional information about the unique id information as a name, etc..
+    
     # User Request : 
     {current_steps}
 
     # placeholder:
     {placeholder}
+
     """
+    return ChatPromptTemplate.from_template(prompt)
+
+
+def get_prompt_final():
+    prompt = """ 
+        # System :
+        You are AI Asistant
+        You can answer two types
+
+        1. If Agent to be used is `conversation_agent`, general conversations, recommendations, directional suggestions, etc. can be carried out 
+        2. If Agent to be used is not a `conversation_agent`, you must ask whether you want to use that Agent or not.
+        example) Do you want to proceed using db_agent?
+
+        And if the plan does not exist anymore, please synthesize the previous content and generate the final answer
+        The final answer should always be the final result of solving the problem.
+
+        # To be processed in this step : 
+        {current_steps}
+        
+        # Agent to be used :
+        {next_agent}
+
+        # Plan :
+        {plan}
+
+        
+        Write your response in Korean.
+        """
     return ChatPromptTemplate.from_template(prompt)
