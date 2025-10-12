@@ -29,23 +29,6 @@ def add_history(role, content):
 
 with st.sidebar:
     clear_btn = st.button("대화내용 초기화")
-    # tab1, tab2 = st.tabs(["프롬프트", "프리셋"])
-    # prompt = """당신은 친절한 AI 어시스턴트 입니다. 사용자의 질문에 간결하게 답변해 주세요."""
-    # user_text_prompt = tab1.text_area("프롬프트", value=prompt)
-    # user_text_apply_btn = tab1.button("프롬프트 적용", key="apply1")
-    # if user_text_apply_btn:
-    #     tab1.markdown(f"✅ 프롬프트가 적용되었습니다")
-    #     prompt_template = user_text_prompt + "\n\n#Question:\n{question}\n\n#Answer:"
-    #     prompt = PromptTemplate.from_template(prompt_template)
-    #     st.session_state["chain"] = get_graph()
-    #     st.session_state["config"] = get_config()
-
-    # user_selected_prompt = tab2.selectbox("프리셋 선택", ["sns", "번역", "요약"])
-    # user_selected_apply_btn = tab2.button("프롬프트 적용", key="apply2")
-    # if user_selected_apply_btn:
-    #     tab2.markdown(f"✅ 프롬프트가 적용되었습니다")
-    #     prompt = load_prompt(f"prompts/{user_selected_prompt}.yaml", encoding="utf8")
-    #     st.session_state["chain"] = get_graph()
 
 
 if clear_btn:
@@ -57,9 +40,6 @@ print_history()
 
 
 if "chain" not in st.session_state:
-    # user_prompt
-    # prompt_template = user_text_prompt + "\n\n#Question:\n{question}\n\n#Answer:"
-    # prompt = PromptTemplate.from_template(prompt_template)
     st.session_state["chain"] = get_graph()
     st.session_state["config"] = get_config()
 
@@ -69,17 +49,36 @@ if user_input := st.chat_input():
     st.chat_message("user").write(user_input)
     with st.chat_message("assistant"):
         chat_container = st.empty()
-        stream_response = st.session_state["chain"].stream(
-            config=st.session_state["config"],
-            input={"question": user_input},
-            stream_mode="values",
-        )  # 문서에 대한 질의
         ai_answer = ""
-        for chunk in stream_response:
-            print(chunk)
-            messages = chunk.get("messages", [])
-            if len(messages) > 1:
-                ai_answer += messages[-1].content
-                ai_answer += "\n\n\n"
+        inputs = {"question": user_input}
+
+        for step, metadata in st.session_state["chain"].stream(
+            input=inputs, config=st.session_state["config"], stream_mode="messages"
+        ):
+            # print(f"main : {step} \n")
+            # print(f"main_metadata: {metadata} \n\n")
+            if (
+                metadata["langgraph_node"] != "summary_node"
+                and (text := step.text())
+                and step.name != "transfer_back_to_supervisor"
+                and step.content != "Transferring back to supervisor"
+            ):
+
+                ai_answer += step.content
+                ai_answer += "\n\n"
                 chat_container.markdown(ai_answer)
         add_history("ai", ai_answer)
+
+        # stream_response = st.session_state["chain"].stream(
+        #     config=st.session_state["config"],
+        #     input={"question": user_input},
+        #     stream_mode="values",
+        # )  # 문서에 대한 질의
+        # for chunk in stream_response:
+        #     print(chunk)
+        #     messages = chunk.get("messages", [])
+        #     if len(messages) > 1:
+        #         ai_answer += messages[-1].content
+        #         ai_answer += "\n\n\n"
+        #         chat_container.markdown(ai_answer)
+        # add_history("ai", ai_answer)
