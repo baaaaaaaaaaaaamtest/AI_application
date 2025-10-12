@@ -1,24 +1,24 @@
-
 from langchain_core.prompts import PromptTemplate
-from langchain_google_genai import ChatGoogleGenerativeAI,GoogleGenerativeAIEmbeddings
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_core.embeddings import Embeddings
 from langchain.tools.retriever import create_retriever_tool
 from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from langchain_community.vectorstores import FAISS
-from langchain_core.output_parsers import StrOutputParser
 from dotenv import load_dotenv
 from langgraph.prebuilt import ToolNode
-from langchain_core.tools.base import BaseTool,Field  # BaseTool이 있는 경로에 따라 import 수정
+from langchain_core.tools.base import (
+    BaseTool,
+    Field,
+)  # BaseTool이 있는 경로에 따라 import 수정
 import os
 from langgraph.checkpoint.memory import MemorySaver
-from typing import Any, Literal, Union,Optional
-from langchain_core.messages import AnyMessage
+from typing import Any, Literal, Union
+from langchain_core.messages import AnyMessage,AIMessage,HumanMessage,ToolMessage
 from pydantic import BaseModel
 from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
-from langchain_teddynote.messages import stream_graph, invoke_graph
 from langchain_teddynote.tools.tavily import TavilySearch
 from langchain_teddynote import logging
 from langchain_core.retrievers import BaseRetriever
@@ -30,65 +30,80 @@ from langchain_experimental.tools import PythonAstREPLTool
 # !pip install -qU langchain-teddynote
 load_dotenv()
 
+
+def get_python_repl():
+    return PythonAstREPLTool()
+
+
 # 프로젝트 이름을 입력합니다.
-def start_langsmith(name:str = "my_test_1"):
+def start_langsmith(name: str = "my_test_1"):
     """
-        추적 가능하도록 lang_smith 활성화 
-        
-        Args:
-            name : lang_smith project name
+    추적 가능하도록 lang_smith 활성화
+
+    Args:
+        name : lang_smith project name
     """
     logging.langsmith(name)
 
 
-def get_gpt(model:str = "gpt-4.1-mini",temperature:int=0):
-    return ChatOpenAI(model=model,temperature=temperature)
-# 모델 로드 
-def get_gemini( 
-        model:str = "gemini-2.5-flash-lite",
-        temperature:int=0,
-        max_output_tokens:int = 1096):
+def get_gpt(model: str = "gpt-4.1-mini", temperature: int = 0):
+    return ChatOpenAI(model=model, temperature=temperature)
+
+
+# 모델 로드
+def get_gemini(
+    model: str = "gemini-2.5-flash-lite",
+    temperature: int = 0,
+    max_output_tokens: int = 1096,
+):
     return ChatGoogleGenerativeAI(
         model=model,
         temperature=temperature,
         max_output_tokens=max_output_tokens,
-        google_api_key=os.getenv('GOOGLE_API_KEY'),
+        google_api_key=os.getenv("GOOGLE_API_KEY"),
     )
 
-def get_pdf_loader(path:str = "../data/SPRI_AI_Brief_2023년12월호_F.pdf"):
+
+def get_pdf_loader(path: str = "../data/SPRI_AI_Brief_2023년12월호_F.pdf"):
     """
-        pdf loader 를 활용하여 pdf 파일을 Load함
-        추후 docling,  한글 pdf loader 등 활용하여 성능 비교 필요함
+    pdf loader 를 활용하여 pdf 파일을 Load함
+    추후 docling,  한글 pdf loader 등 활용하여 성능 비교 필요함
     """
     return PyPDFLoader(path)
 
-def get_text_splitter(chunk_size:int = 1000, chunk_overlap:int = 50):
-    """
-        ["\n\n", "\n", " ", ""] 를 기본적으로 사용하여 text를 자른다
-        만약 "\n\n"을 사용하여 자른 chunk가 1000을 넘어가는경우 "\n" 사용하여 다시 자르는 행위를
-        재귀적으로 수행하는 매커니즘
-    """
-    return RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
 
-def get_docs(loader:PyPDFLoader,get_text_splitter)-> list[Document]:
+def get_text_splitter(chunk_size: int = 1000, chunk_overlap: int = 50):
+    """
+    ["\n\n", "\n", " ", ""] 를 기본적으로 사용하여 text를 자른다
+    만약 "\n\n"을 사용하여 자른 chunk가 1000을 넘어가는경우 "\n" 사용하여 다시 자르는 행위를
+    재귀적으로 수행하는 매커니즘
+    """
+    return RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size, chunk_overlap=chunk_overlap
+    )
+
+
+def get_docs(loader: PyPDFLoader, get_text_splitter) -> list[Document]:
     """PDF Loader 활용, 이미 정해진 splitter 활용하여 pdf 를 분할, doc로 생성함"""
     return loader.load_and_split(get_text_splitter)
 
-def get_embedding(model:str = "models/gemini-embedding-001"):
+
+def get_embedding(model: str = "models/gemini-embedding-001"):
     """
-        텍스트 등 파일을 지정된 모델의 차원에 따라 숫자로 변환하는 기법
+    텍스트 등 파일을 지정된 모델의 차원에 따라 숫자로 변환하는 기법
     """
     return GoogleGenerativeAIEmbeddings(model=model)
 
 
-def get_retriever(docs:Document,embedding:Embeddings,k:int = 3)->BaseRetriever:
+def get_retriever(docs: Document, embedding: Embeddings, k: int = 3) -> BaseRetriever:
     """
-        사전 만들어진 Document List 를 Embedding 활용하여 벡터화 진행
-        벡터화 된 데이터를 FAISS, Chroma, Pinecone 등에 저장 가능함
-        이후 검색 가능하드로고 retriever 제공함
+    사전 만들어진 Document List 를 Embedding 활용하여 벡터화 진행
+    벡터화 된 데이터를 FAISS, Chroma, Pinecone 등에 저장 가능함
+    이후 검색 가능하드로고 retriever 제공함
     """
     vector = FAISS.from_documents(documents=docs, embedding=embedding)
     return vector.as_retriever(search_kwargs={"k": k})
+
 
 def get_retriever_tool(retriever):
     return create_retriever_tool(
@@ -96,21 +111,24 @@ def get_retriever_tool(retriever):
         name="pdf_search",  # 도구의 이름을 입력합니다.
         description="use this tool to search information from the PDF document",  # 도구에 대한 설명을 자세히 기입해야 합니다!!
         document_prompt=PromptTemplate.from_template(
-        "<document><context>{page_content}</context><metadata><source>{source}</source><page>{page}</page></metadata></document>"
+            "<document><context>{page_content}</context><metadata><source>{source}</source><page>{page}</page></metadata></document>"
         ),
     )
 
+
 def get_tavily_tool():
-    """ search 등 활용하여 직접 검색도 가능함 """
+    """search 등 활용하여 직접 검색도 가능함"""
     return TavilySearch()
 
+
 def get_tool_node(*tools):
-    if len(tools) == 0 :
+    if len(tools) == 0:
         raise TypeError(f"tools is empty")
     for tool in tools:
         if not isinstance(tool, BaseTool):
             raise TypeError(f"tool {tool} is not a BaseTool instance")
     return ToolNode(tools)
+
 
 def tools_condition(
     state: Union[list[AnyMessage], dict[str, Any], BaseModel],
@@ -119,7 +137,7 @@ def tools_condition(
     """Conditional routing function for tool-calling workflows.
 
     from langgraph.prebuilt import tools_condition 참조
-   
+
 
     Example:
         Basic usage in a ReAct agent:
@@ -167,38 +185,45 @@ def tools_condition(
         return "tools"
     return "__end__"
 
+
 def get_check_pointer():
     return MemorySaver()
+
 
 def get_random_uuid():
     return str(uuid.uuid4())
 
-def get_runnable_config(recursion_limit:int = 10, thread_id:str=1):
+
+def get_runnable_config(recursion_limit: int = 10, thread_id: str = 1):
     """
-        recursion_limit : node 이동 횟수 제한
-        thread_id : 멀티턴 대화 위한 기억
+    recursion_limit : node 이동 횟수 제한
+    thread_id : 멀티턴 대화 위한 기억
     """
-    return RunnableConfig(recursion_limit=recursion_limit, configurable={"thread_id": thread_id})
+    return RunnableConfig(
+        recursion_limit=recursion_limit, configurable={"thread_id": thread_id}
+    )
 
 
 from langchain_teddynote.evaluator import GroundednessChecker
 
-def get_relevant(llm,target:str="question-retrieval"):
+
+def get_relevant(llm, target: str = "question-retrieval"):
     """
-        retrieval-answer : 검색 내용과 답변과의 상관성 -> 할루시네이션 
+    retrieval-answer : 검색 내용과 답변과의 상관성 -> 할루시네이션
 
-        input_variables = ["context", "answer"]
+    input_variables = ["context", "answer"]
 
-        question-answer : 질의와 답변간의 상관성
+    question-answer : 질의와 답변간의 상관성
 
-        input_variables = = ["question", "answer"]
+    input_variables = = ["question", "answer"]
 
-        question-retrieval : 질의와 검색 내용 상관성
+    question-retrieval : 질의와 검색 내용 상관성
 
-        input_variables = ["question", "context"]
+    input_variables = ["question", "context"]
 
     """
     return GroundednessChecker(llm=llm, target=target).create()
+
 
 def convert_docs_str(docs):
     return "\n".join(
@@ -217,8 +242,10 @@ def convert_search_str(docs):
         ]
     )
 
+
 from xml.etree import ElementTree as ET
 from langchain.schema import Document
+
 
 def convert_str_to_docs(xml_str: str):
     docs = []
@@ -227,21 +254,18 @@ def convert_str_to_docs(xml_str: str):
         content = doc_elem.findtext("content")
         source = doc_elem.findtext("source")
         page = doc_elem.findtext("page")
-        metadata = {
-            "source": source,
-            "page": int(page) if page is not None else None
-        }
+        metadata = {"source": source, "page": int(page) if page is not None else None}
         doc = Document(page_content=content, metadata=metadata)
         docs.append(doc)
     return docs
 
 
-def get_snapshot_data(graph,config,id):
+def get_snapshot_data(graph, config, id):
     """
-        Args:
-            graph : graph 객체
-            config : 이전 config
-            id :  대상 id
+    Args:
+        graph : graph 객체
+        config : 이전 config
+        id :  대상 id
     """
     snapshot = graph.get_state(config)
     messages = snapshot.values.get("messages", [])
@@ -260,27 +284,30 @@ def get_snapshot_data(graph,config,id):
     else:
         print("해당 id의 메시지가 없습니다.")
 
+
 from langchain_community.agent_toolkits import SQLDatabaseToolkit
 from langchain_community.utilities import SQLDatabase
 
-def get_db()->SQLDatabase:
+
+def get_db() -> SQLDatabase:
     return SQLDatabase.from_uri("sqlite:///Chinook.db")
 
-def get_db_tool(llm)-> SQLDatabaseToolkit:
-    """ 
-        llm : gpt or gemini
+
+def get_db_tool(llm) -> SQLDatabaseToolkit:
+    """
+    llm : gpt or gemini
     """
     db = SQLDatabase.from_uri("sqlite:///Chinook.db")
     toolkit = SQLDatabaseToolkit(db=db, llm=llm)
     # SQLDatabaseToolkit에서 사용 가능한 도구 목록
     return toolkit.get_tools()
-    
 
 
 def visualize_graph(graph, xray=False, ascii=False):
     from IPython.display import Image, display
     from langgraph.graph.state import CompiledStateGraph
     from dataclasses import dataclass
+
     """
     CompiledStateGraph 객체를 시각화하여 표시합니다.
 
@@ -291,8 +318,8 @@ def visualize_graph(graph, xray=False, ascii=False):
         graph: 시각화할 그래프 객체. CompiledStateGraph 인스턴스여야 합니다.
         xray: 그래프 내부 상태를 표시할지 여부.
         ascii: ASCII 형식으로 그래프를 표시할지 여부.
-    """ 
-    
+    """
+
     @dataclass
     class NodeStyles:
         default: str = (
@@ -304,6 +331,7 @@ def visualize_graph(graph, xray=False, ascii=False):
         last: str = (
             "fill:#45C4B0, fill-opacity:1, color:#000000, stroke:#45C4B0, stroke-width:1px, font-weight:normal, font-style:italic, stroke-dasharray:2,2"  # 점선 테두리
         )
+
     if not ascii:
         try:
             # 그래프 시각화
@@ -325,6 +353,7 @@ def visualize_graph(graph, xray=False, ascii=False):
                 print(f"ASCII 표시도 실패: {ascii_error}")
     else:
         print(graph.get_graph(xray=xray).draw_ascii())
+
 
 # Query Rewrite 프롬프트 정의
 re_write_prompt = PromptTemplate(
@@ -373,4 +402,15 @@ re_write_prompt = PromptTemplate(
     input_variables=["question"],
 )
 
-
+def parse_messages(messages):
+    parsed = []
+    for msg in messages:
+        if isinstance(msg, HumanMessage):
+            parsed.append(f"human : {msg.content}")
+        elif isinstance(msg, AIMessage):
+            parsed.append(f"ai : {msg.content}")
+        elif isinstance(msg, ToolMessage):
+            parsed.append(f"tool : {msg.content}")
+        else:
+            parsed.append(f"etc : {msg.content}")
+    return parsed
