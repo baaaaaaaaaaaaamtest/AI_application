@@ -2,7 +2,8 @@ from langchain_core.prompts import PromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_core.embeddings import Embeddings
 from langchain.tools.retriever import create_retriever_tool
-from langchain.document_loaders import PyPDFLoader
+
+# from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from langchain_community.vectorstores import FAISS
@@ -15,7 +16,7 @@ from langchain_core.tools.base import (
 import os
 from langgraph.checkpoint.memory import MemorySaver
 from typing import Any, Literal, Union
-from langchain_core.messages import AnyMessage,AIMessage,HumanMessage,ToolMessage
+from langchain_core.messages import AnyMessage, AIMessage, HumanMessage, ToolMessage
 from pydantic import BaseModel
 from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
@@ -64,12 +65,12 @@ def get_gemini(
     )
 
 
-def get_pdf_loader(path: str = "../data/SPRI_AI_Brief_2023년12월호_F.pdf"):
-    """
-    pdf loader 를 활용하여 pdf 파일을 Load함
-    추후 docling,  한글 pdf loader 등 활용하여 성능 비교 필요함
-    """
-    return PyPDFLoader(path)
+# def get_pdf_loader(path: str = "../data/SPRI_AI_Brief_2023년12월호_F.pdf"):
+#     """
+#     pdf loader 를 활용하여 pdf 파일을 Load함
+#     추후 docling,  한글 pdf loader 등 활용하여 성능 비교 필요함
+#     """
+#     return PyPDFLoader(path)
 
 
 def get_text_splitter(chunk_size: int = 1000, chunk_overlap: int = 50):
@@ -83,9 +84,9 @@ def get_text_splitter(chunk_size: int = 1000, chunk_overlap: int = 50):
     )
 
 
-def get_docs(loader: PyPDFLoader, get_text_splitter) -> list[Document]:
-    """PDF Loader 활용, 이미 정해진 splitter 활용하여 pdf 를 분할, doc로 생성함"""
-    return loader.load_and_split(get_text_splitter)
+# def get_docs(loader: PyPDFLoader, get_text_splitter) -> list[Document]:
+#     """PDF Loader 활용, 이미 정해진 splitter 활용하여 pdf 를 분할, doc로 생성함"""
+#     return loader.load_and_split(get_text_splitter)
 
 
 def get_embedding(model: str = "models/gemini-embedding-001"):
@@ -401,6 +402,7 @@ re_write_prompt = PromptTemplate(
 """,
     input_variables=["question"],
 )
+
 
 def parse_messages(messages):
     parsed = []

@@ -8,7 +8,7 @@ from module.custom_model import *
 from module.tools import *
 from module.utils import *
 from langgraph.prebuilt import create_react_agent
-from typing_extensions import TypedDict
+from typing_extensions import TypedDict, Dict
 
 
 def get_prompt_db_query():
@@ -32,7 +32,6 @@ def get_prompt_db_query():
                 Finally, based on the generated query, you can run it in 'db_query_tool' and see the results
                 """,
             ),
-            ("placeholder", "{chat_history}"),
             ("human", "{messages}"),
             ("placeholder", "{agent_scratchpad}"),
         ]
@@ -81,19 +80,20 @@ def get_all_table_tool():
 
 
 @tool
-def get_one_table_schema_tool(user_inputs):
+def get_one_table_schema_tool(target_tables_name):
     """
     You must bring the schema information of the table you want to use to safely perform inquiries
     When you get a table schema, you can request multiple table information at once.
+    When creating target_tables_name, be sure to refer to the 'sql_db_list_tables' list.
 
     Args:
-    user_inputs (dict): 사용자의 요구사항을 분석하여 필요한 테이블 리스트 작성
+    target_tables_name (dict): 사용자의 요구사항을 분석하여 필요한 테이블 리스트
     """
     llm = get_gpt()
     tools = get_db_tool(llm)
     sql_db_schema = next(tool for tool in tools if tool.name == "sql_db_schema")
     llm_with_schema = llm.bind_tools([sql_db_schema], tool_choice="sql_db_schema")
-    response = llm_with_schema.invoke(user_inputs)
+    response = llm_with_schema.invoke(target_tables_name)
     llm_gen_input = response.tool_calls[0]["args"]
     return sql_db_schema.invoke(llm_gen_input)
 
@@ -136,7 +136,9 @@ def db_query_tool(query: str) -> str:
         return f"Success: {result}"
 
 
+# 상태 초기값 생성 예
 def get_db_agent():
+
     llm = get_gpt()
     prompt = get_prompt_db_query()
     return create_react_agent(
@@ -149,6 +151,6 @@ def get_db_agent():
             get_query_gen_tool,
             db_query_tool,
         ],
-        prompt=prompt,
+        prompt=get_prompt_db_query(),
         name="db_agent",
     )
