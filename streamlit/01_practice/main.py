@@ -17,6 +17,9 @@ start_langsmith("streamlit_01_practice")
 if "messages" not in st.session_state:
     st.session_state["messages"] = []
 
+if "tmp_messages" not in st.session_state:
+    st.session_state["tmp_messages"] = []
+
 
 def get_double_array(messages):
     result = []
@@ -42,56 +45,9 @@ def get_double_array(messages):
 
 
 def print_history():
-    st.session_state["messages"] = [
-        ChatMessageWithType(
-            chat_message=ChatMessage(
-                content="서울의 1월, 2월, 3월 평균 기온은 각각 약 -3.5°C, -0.8°C, 4.2°C 시각화해줘",
-                additional_kwargs={},
-                response_metadata={},
-                role="user",
-            ),
-            msg_type="text",
-            tool_name="",
-        ),
-        ChatMessageWithType(
-            chat_message=ChatMessage(
-                content="content=\"```python\\nimport matplotlib.pyplot as plt\\n\\n# Data for Seoul's average temperature in January, February, and March\\nmonths = ['January', 'February', 'March']\\naverage_temperatures = [-3.5, -0.8, 4.2]\\n\\n# Create the bar chart\\nplt.figure(figsize=(8, 6))\\nplt.bar(months, average_temperatures, color=['skyblue', 'lightcoral', 'lightgreen'])\\n\\n# Add titles and labels\\nplt.title('Average Temperature in Seoul (January-March)')\\nplt.xlabel('Month')\\nplt.ylabel('Average Temperature (°C)')\\nplt.grid(axis='y', linestyle='--', alpha=0.7)\\n\\n# Save the plot to a file\\nplt.savefig('seoul_average_temperature.png', dpi=300)\\n```\" additional_kwargs={} response_metadata={'safety_ratings': [], 'finish_reason': 'STOP', 'model_name': 'gemini-2.5-flash-lite'} id='run--e8c88198-b303-4d9e-8a22-aaaf4e3ac449' usage_metadata={'input_tokens': 207, 'output_tokens': 184, 'total_tokens': 391, 'input_token_details': {'cache_read': 0}}",
-                additional_kwargs={},
-                response_metadata={},
-                role="assistant",
-            ),
-            msg_type="tool_result",
-            tool_name="generate_python_code",
-        ),
-        ChatMessageWithType(
-            chat_message=ChatMessage(
-                content="Success: seoul_average_temperature.png\n",
-                additional_kwargs={},
-                response_metadata={},
-                role="assistant",
-            ),
-            msg_type="tool_result",
-            tool_name="run_python_repl",
-        ),
-        ChatMessageWithType(
-            chat_message=ChatMessage(
-                content='서울의 1월, 2월, 3 월 평균 기온을 시각화한 막대 그래프를 생성했습니다. 그래프는 각 월별 평균 기온을 색상으로 구분하여 보여주며, y축에는 온도(°C)가 표시되어 있습니다. 생성된 그래프 파일명은 "seoul_average_temperature.png"입니다. 필요하시면 이 파일을 확인해 주세요.',
-                additional_kwargs={},
-                response_metadata={},
-                role="assistant",
-            ),
-            msg_type="text",
-            tool_name="",
-        ),
-    ]
-    # print(f'print history : \n {st.session_state["messages"]}\n\n')
-
     messages = get_double_array(st.session_state["messages"])
-
     for msg in messages:
-        # st.chat_message(msg.chat_message.role).write(msg.chat_message.content)
         role = list(msg.keys())[0]
-        print(role)
         if role == "user":
             for m in msg[role]:
                 user_role = m.chat_message.role
@@ -111,38 +67,9 @@ def print_history():
                     elif ai_msg_type == "tool_result":
                         with st.expander(f"✅ {ai_tool_name}"):
                             if ai_tool_name == "run_python_repl":
-                                print(f"metadata : {ai_content} \n")
                                 filename = ai_content.replace("Success: ", "").strip()
                                 st.image(filename)
                             st.markdown(ai_content)
-        #     pass
-        # role = msg.chat_message.role
-        # content = msg.chat_message.content
-        # tool_name = msg.tool_name
-        # msg_type = msg.msg_type
-        # if role == "user":
-        #     st.chat_message(role).write(content)
-        # else:
-        #     with st.chat_message("assistant"):
-        #         if msg_type == "text":
-        #             st.markdown(content)
-        #         elif msg_type == "tool_result":
-        #             with st.expander(f"✅ {tool_name}"):
-        #                 if tool_name == "run_python_repl":
-        #                     print(f"metadata : {content} \n")
-        #                     filename = content.replace("Success: ", "").strip()
-        #                     st.image(filename)
-        #                 st.markdown(content)
-
-        # print(f"tool_name: {tool_name}")
-        # print(f"msg_type: {msg_type}")
-        # print(f"content: {content}\n")
-
-        # st.chat_message(msg.chat_message.role).write(msg.chat_message.content)
-
-
-# def add_history(role, content):
-#     st.session_state["messages"].append(ChatMessage(role=role, content=content))
 
 
 with st.sidebar:
@@ -150,7 +77,8 @@ with st.sidebar:
 
 
 if clear_btn:
-    retriever = st.session_state["messages"].clear()
+    st.session_state["messages"].clear()
+    st.session_state["tmp_messages"].clear()
     st.session_state["chain"] = get_graph()
     st.session_state["config"] = get_config()
 
@@ -158,25 +86,6 @@ if clear_btn:
 if "chain" not in st.session_state:
     st.session_state["chain"] = get_graph()
     st.session_state["config"] = get_config()
-
-
-# if user_input := st.chat_input():
-#     add_history("user", user_input)
-#     st.chat_message("user").write(user_input)
-#     with st.chat_message("assistant"):
-#         chat_container = st.empty()
-#         ai_answer = ""
-#         inputs = {"question": user_input}
-#         for step, metadata in st.session_state["chain"].stream(
-#             input=inputs,
-#             config=st.session_state["config"],
-#             stream_mode="messages",
-#             subgraphs=True,
-#         ):
-#             if step != ():
-#                 ai_answer += metadata[0].content
-#                 chat_container.markdown(ai_answer)
-#         add_history("ai", ai_answer)
 
 
 from attr import dataclass
@@ -256,8 +165,7 @@ def stream_handler(streamlit_container, agent_executor, inputs, config):
         ):
             ## summary 랑 result 제외
             if chunk_msg != ():
-                # print(f"chunk_msg : {chunk_msg} \n")
-                # print(f"metadata : {metadata} \n")
+
                 _metadata = metadata[0]
                 if hasattr(_metadata, "tool_calls") and _metadata.tool_calls:
                     # Initialize tool call result
@@ -270,14 +178,6 @@ def stream_handler(streamlit_container, agent_executor, inputs, config):
                     tool_arg["tool_name"] = _metadata.tool_calls[0]["name"]
                     if tool_arg["tool_name"]:
                         tool_args.append(tool_arg)
-
-                # if (
-                #     hasattr(_metadata, "tool_call_chunks")
-                #     and _metadata.tool_call_chunks
-                # ):
-                #     if len(_metadata.tool_call_chunks) > 0:  # Add None check
-                #         # Accumulate tool call arguments
-                #         _metadata.tool_call_chunks[0]["args"]
 
                 if isinstance(_metadata, ToolMessage):
                     # Save tool execution results
@@ -293,7 +193,6 @@ def stream_handler(streamlit_container, agent_executor, inputs, config):
                                     metadata[0].content.replace("Success: ", "").strip()
                                 )
                                 st.image(filename)
-                                st.markdown(f"![Alt text]({filename})")
                             st.markdown(current_tool_message["tool_result"])
                 if metadata[1]["langgraph_node"] == "agent":
                     if _metadata.content:
@@ -317,6 +216,7 @@ class ChatMessageWithType:
 
 
 def add_message(role, message, msg_type="text", tool_name=""):
+    st.session_state["tmp_messages"].append(ChatMessage(role=role, content=message))
     if msg_type == "text":
         st.session_state["messages"].append(
             ChatMessageWithType(
@@ -338,21 +238,21 @@ def add_message(role, message, msg_type="text", tool_name=""):
 
 
 # 이전 대화를 출력
-def print_messages():
-    for message in st.session_state["messages"]:
-        if isinstance(message, ChatMessageWithType):
-            if message.msg_type == "text":
-                st.chat_message(message.chat_message.role).write(
-                    message.chat_message.content
-                )
-            elif message.msg_type == "tool_result":
-                with st.expander(f"✅ {message.tool_name}"):
-                    st.markdown(message.chat_message.content)
+# def print_messages():
+#     for message in st.session_state["messages"]:
+#         if isinstance(message, ChatMessageWithType):
+#             if message.msg_type == "text":
+#                 st.chat_message(message.chat_message.role).write(
+#                     message.chat_message.content
+#                 )
+#             elif message.msg_type == "tool_result":
+#                 with st.expander(f"✅ {message.tool_name}"):
+#                     st.markdown(message.chat_message.content)
+# print_messages()
 
-
-print_messages()
 print_history()
 
+config = st.session_state["config"]
 
 if user_input := st.chat_input():
     add_message("user", user_input)
@@ -360,18 +260,14 @@ if user_input := st.chat_input():
     with st.chat_message("assistant"):
         container = st.empty()
         ai_answer = ""
-        inputs = {"question": user_input}
-
+        inputs = {"question": user_input, "messages": st.session_state["tmp_messages"]}
         container_messages, tool_args, agent_answer = stream_handler(
             container,
             st.session_state["chain"],
             inputs,
-            st.session_state["config"],
+            config,
         )
-        # print(f"tool_args : {tool_args} \n\n")
-        # print(f"agent_answer : {agent_answer}\n\n")
-        # 대화기록을 저장한다.
-        # add_message("user", user_input)
+        st.session_state["tmp_messages"].clear()
         for tool_arg in tool_args:
             add_message(
                 "assistant",
@@ -380,4 +276,4 @@ if user_input := st.chat_input():
                 tool_arg["tool_name"],
             )
         add_message("assistant", agent_answer)
-        # print(st.session_state["messages"])
+        print(st.session_state["tmp_messages"])
