@@ -51,23 +51,39 @@ if user_input := st.chat_input():
         chat_container = st.empty()
         ai_answer = ""
         inputs = {"question": user_input}
-
         for step, metadata in st.session_state["chain"].stream(
-            input=inputs, config=st.session_state["config"], stream_mode="messages"
+            input=inputs,
+            config=st.session_state["config"],
+            stream_mode="messages",
+            subgraphs=True,
         ):
-            # print(f"main : {step} \n")
-            # print(f"main_metadata: {metadata} \n\n")
-            if (
-                metadata["langgraph_node"] != "summary_node"
-                and (text := step.text())
-                and step.name != "transfer_back_to_supervisor"
-                and step.content != "Transferring back to supervisor"
-            ):
-
-                ai_answer += step.content
-                ai_answer += "\n\n"
+            
+            # if (
+            #     metadata[0].content != "Transferring back to supervisor"
+            #     and metadata[0].content != "Successfully transferred back to supervisor"
+            #     and metadata[0].content != ""
+            # ):
+            if step != ():
+                ai_answer += metadata[0].content
                 chat_container.markdown(ai_answer)
         add_history("ai", ai_answer)
+
+        # for step, metadata in st.session_state["chain"].stream(
+        #     input=inputs, config=st.session_state["config"], stream_mode="messages"
+        # ):
+        #     # print(f"main : {step} \n")
+        #     # print(f"main_metadata: {metadata} \n\n")
+        #     if (
+        #         metadata["langgraph_node"] != "summary_node"
+        #         and (text := step.text())
+        #         and step.name != "transfer_back_to_supervisor"
+        #         and step.content != "Transferring back to supervisor"
+        #     ):
+
+        #         ai_answer += step.content
+        #         ai_answer += "\n\n"
+        #         chat_container.markdown(ai_answer)
+        # add_history("ai", ai_answer)
 
         # stream_response = st.session_state["chain"].stream(
         #     config=st.session_state["config"],
