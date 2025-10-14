@@ -163,45 +163,54 @@ def stream_handler(streamlit_container, agent_executor, inputs, config):
             stream_mode="messages",
             subgraphs=True,
         ):
+            # print(f" chunk_msg : \n{chunk_msg}\n")
+            # print(f" metadata : \n{metadata}\n")
             ## summary 랑 result 제외
-            if chunk_msg != ():
+            try:
+                if chunk_msg != ():
 
-                _metadata = metadata[0]
-                if hasattr(_metadata, "tool_calls") and _metadata.tool_calls:
-                    # Initialize tool call result
-                    tool_arg = {
-                        "tool_name": "",
-                        "tool_result": "",
-                        "tool_call_id": _metadata.tool_calls[0]["id"],
-                    }
-                    # Save tool name
-                    tool_arg["tool_name"] = _metadata.tool_calls[0]["name"]
-                    if tool_arg["tool_name"]:
-                        tool_args.append(tool_arg)
+                    _metadata = metadata[0]
+                    if hasattr(_metadata, "tool_calls") and _metadata.tool_calls:
+                        # Initialize tool call result
+                        tool_arg = {
+                            "tool_name": "",
+                            "tool_result": "",
+                            "tool_call_id": _metadata.tool_calls[0]["id"],
+                        }
+                        # Save tool name
+                        tool_arg["tool_name"] = _metadata.tool_calls[0]["name"]
+                        if tool_arg["tool_name"]:
+                            tool_args.append(tool_arg)
 
-                if isinstance(_metadata, ToolMessage):
-                    # Save tool execution results
-                    current_tool_message = get_current_tool_message(
-                        tool_args, _metadata.tool_call_id
-                    )
-                    if current_tool_message:
-                        current_tool_message["tool_result"] = _metadata.content
-                        with st.status(f'✅ {current_tool_message["tool_name"]}'):
-                            if current_tool_message["tool_name"] == "run_python_repl":
-                                print(f"metadata : {metadata} \n")
-                                filename = (
-                                    metadata[0].content.replace("Success: ", "").strip()
-                                )
-                                st.image(filename)
-                            st.markdown(current_tool_message["tool_result"])
-                if metadata[1]["langgraph_node"] == "agent":
-                    if _metadata.content:
-                        if agent_message is None:
-                            agent_message = st.empty()
-                        # Accumulate agent message
-                        agent_answer += _metadata.content
-                        agent_message.markdown(agent_answer)
-
+                    if isinstance(_metadata, ToolMessage):
+                        # Save tool execution results
+                        current_tool_message = get_current_tool_message(
+                            tool_args, _metadata.tool_call_id
+                        )
+                        if current_tool_message:
+                            current_tool_message["tool_result"] = _metadata.content
+                            with st.status(f'✅ {current_tool_message["tool_name"]}'):
+                                if (
+                                    current_tool_message["tool_name"]
+                                    == "run_python_repl"
+                                ):
+                                    # print(f"metadata : {metadata} \n")
+                                    filename = (
+                                        metadata[0]
+                                        .content.replace("Success: ", "")
+                                        .strip()
+                                    )
+                                    st.image(filename)
+                                st.markdown(current_tool_message["tool_result"])
+                    if metadata[1]["langgraph_node"] == "agent":
+                        if _metadata.content:
+                            if agent_message is None:
+                                agent_message = st.empty()
+                            # Accumulate agent message
+                            agent_answer += _metadata.content
+                            agent_message.markdown(agent_answer)
+            except:
+                return "Error :"
         _tool_args = [
             tool_arg for tool_arg in tool_args if tool_arg.get("tool_result") != ""
         ]
@@ -275,5 +284,6 @@ if user_input := st.chat_input():
                 "tool_result",
                 tool_arg["tool_name"],
             )
+        print(st.session_state["chain"].get_state(config))
         add_message("assistant", agent_answer)
-        print(st.session_state["tmp_messages"])
+        # print(st.session_state["tmp_messages"])
