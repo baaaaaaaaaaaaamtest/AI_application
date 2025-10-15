@@ -166,8 +166,8 @@ def stream_handler(streamlit_container, agent_executor, inputs, config):
             ):
                 # print(f" chunk_msg : \n{chunk_msg}\n")
                 # print(f" metadata : \n{metadata}\n")
-                ## summary 랑 result 제외
                 try:
+                    ## summary와 supervisor 화면 상에서 제거
                     if chunk_msg != () and "supervisor" not in chunk_msg[0]:
 
                         _metadata = metadata[0]
@@ -197,7 +197,6 @@ def stream_handler(streamlit_container, agent_executor, inputs, config):
                                         current_tool_message["tool_name"]
                                         == "run_python_repl"
                                     ):
-                                        # print(f"metadata : {metadata} \n")
                                         filename = (
                                             metadata[0]
                                             .content.replace("Success: ", "")
@@ -212,8 +211,19 @@ def stream_handler(streamlit_container, agent_executor, inputs, config):
                                 # Accumulate agent message
                                 agent_answer += _metadata.content
                                 agent_message.markdown(agent_answer)
-                except:
-                    return "Error :"
+                except Exception as e:
+                    st.error(f"에러 발생: {str(e)}")
+        # supervisor 노드가 직접 답변하는 경우 출력하는 로직
+        try:
+            past_data = agent_executor.get_state(config).values
+            if len(past_data["messages"]) <= 3:
+                agent_answer = past_data["answer"].content
+                if agent_message is None:
+                    agent_message = st.empty()
+                agent_message.markdown(agent_answer)
+        except Exception as e:
+            st.warning(f"llm 가져오기 중 에러: {str(e)}")
+
         _tool_args = [
             tool_arg for tool_arg in tool_args if tool_arg.get("tool_result") != ""
         ]
@@ -287,6 +297,6 @@ if user_input := st.chat_input():
                 "tool_result",
                 tool_arg["tool_name"],
             )
-        print(st.session_state["chain"].get_state(config))
         add_message("assistant", agent_answer)
         # print(st.session_state["tmp_messages"])
+        # print(st.session_state["chain"].get_state(config))
