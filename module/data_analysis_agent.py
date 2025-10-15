@@ -43,7 +43,6 @@ def get_prompt_python_code():
             (
                 "system",
                 """ 
-                # Instruction :
                 # Instructions:
                 - It is an AI tool that analyzes users and writes them in Python code
                 - To create Python code for chart generation, you need to analyze your meaning accurately.
@@ -55,7 +54,9 @@ def get_prompt_python_code():
                   Therefore, the analysis results can be saved as files.
   
                 # For example:
-                    - step1 : plt.show() -> plt.savefig ('file_path.png', dpi=300)
+                    - step1 : file_path = 'current_time.png'
+                    - step2 : plt.show() -> plt.savefig ('file_path.png', dpi=300)
+                    - step3 : print('file_path.png')
 
                 """,
             ),
@@ -96,6 +97,7 @@ def run_python_repl(
     1. Never run the `plt.show()` code.
     2. Make sure to save it as a file when creating a chart.
     3. Make sure to print out the saved path and file name.
+    4. You must return fileName
 
     Args:
     python_code (string): 사용자 요구를 기반으로 생성한 파이썬 코드

@@ -24,7 +24,8 @@ from langchain_teddynote.tools.tavily import TavilySearch
 from langchain_teddynote import logging
 from langchain_core.retrievers import BaseRetriever
 import uuid
-from langchain_experimental.tools import PythonAstREPLTool
+from langchain_experimental.tools import PythonAstREPLTool,PythonREPLTool
+import cohere
 
 
 # LangSmith 추적을 설정합니다. https://smith.langchain.com
@@ -32,8 +33,13 @@ from langchain_experimental.tools import PythonAstREPLTool
 load_dotenv()
 
 
+def get_cohere_raranker():
+    return cohere.Client(os.getenv("COHERE_API_KEY"))
+
+
 def get_python_repl():
-    return PythonAstREPLTool()
+    return PythonREPLTool()
+    # return PythonAstREPLTool()
 
 
 # 프로젝트 이름을 입력합니다.
@@ -53,9 +59,9 @@ def get_gpt(model: str = "gpt-4.1-mini", temperature: int = 0):
 
 # 모델 로드
 def get_gemini(
-    model: str = "gemini-2.5-flash-lite",
+    model: str = "gemini-2.5-flash",
     temperature: int = 0,
-    max_output_tokens: int = 1096,
+    max_output_tokens: int = 65536,
 ):
     return ChatGoogleGenerativeAI(
         model=model,
@@ -119,7 +125,7 @@ def get_retriever_tool(retriever):
 
 def get_tavily_tool():
     """search 등 활용하여 직접 검색도 가능함"""
-    return TavilySearch()
+    return TavilySearch(api_key=os.environ.get("TAVILY_API_KEY", None))
 
 
 def get_tool_node(*tools):
