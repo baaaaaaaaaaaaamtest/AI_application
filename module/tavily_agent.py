@@ -5,17 +5,13 @@ from module.utils import *
 from module.prompt import *
 from langchain_tavily import TavilySearch
 from langgraph.prebuilt import create_react_agent
-from typing import Annotated, List
+from typing import Annotated
 from langchain_core.tools import tool
 from langchain_community.document_loaders import WebBaseLoader
 import bs4
 from langchain_openai import OpenAIEmbeddings
-from langchain.retrievers.document_compressors import CrossEncoderReranker
-from langchain.retrievers import ContextualCompressionRetriever
 from langchain_community.document_transformers import LongContextReorder
 from langchain.retrievers import BM25Retriever, EnsembleRetriever
-from operator import itemgetter
-from langchain_core.runnables import RunnableLambda
 
 
 def get_prompt_web_search():

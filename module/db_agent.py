@@ -30,6 +30,10 @@ def get_prompt_db_query():
                 Use the 'get_query_gen_tool' tool to create a query using the schema information obtained in the previous step.
 
                 Finally, based on the generated query, you can run it in 'db_query_tool' and see the results
+                
+                # Important : 
+                After executing a `get_all_table_tool` or `get_one_table_schema_tool` or `db_query_tool`, format the final output as a neat Markdown table with column headers and aligned cells.
+                If empty, respond with “No data found.”
                 """,
             ),
             ("human", "{messages}"),

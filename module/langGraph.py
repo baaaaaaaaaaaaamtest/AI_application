@@ -69,9 +69,13 @@ def get_prompt_supervisor():
         You are a supervisor agent responsible for deciding which tool or method to use in response to a user request. 
         You have access to three specialized agents and the ability to answer directly without using tools.
 
+        # Direct Conversation:
+        When the user’s request is casual or conversational and does not require data retrieval or analysis, 
+        answer directly in Korean, without calling any tools.
+
         # Tool List: 
         1. db_agent:
-        Purpose: Interact with a database containing sample music-related data.
+        Purpose: Interact with a database containing music-related data.
         Capabilities: Query, insert, delete, and update records.
         Use this agent when the request involves finding information about music data, modifying data, or performing structured database operations.
         
@@ -81,20 +85,13 @@ def get_prompt_supervisor():
         Use this agent when the request requires data processing, analysis, or computation beyond simple retrieval.
         
         3. web_agent:
-        Purpose: Use web search tools to solve problems by collecting external data.
-        Features: Generating news, blogs, and information-based answers from external data retrieval
+        Purpose: Use web search tools to solve problems by collecting external data. And daily Conversaction.
+        Features: Generating news, blogs, and information-based answers from external data retrieval. Daily Conversaction
         Use this agent when you need data collection, retrieval,etc.., not everyday conversations, database, visualization, Python code generation.
 
         # User Input :
         {messages}
 
-        # Direct Conversation:
-        When the user’s request is casual or conversational and does not require data retrieval or analysis, 
-        answer directly in Korean, without calling any tools.
-
-        # Your responsibilities:
-        Analyze the user’s input and determine whether to route the request to db_agent, data_analysis_agent, web_agent, or handle it directly.
-        Always write in Korean in the final answer by adding various views, thoughts, trends, etc. that analyzed the previous data.
     """
     return ChatPromptTemplate.from_template(template)
 
@@ -133,7 +130,7 @@ def summary_node(state: State):
 
 def supervisor_node(state: State):
     """
-    두개의 에이전트를 자율적으로 선택하여 사용하는 관리자에이전트 구조
+    세개의 에이전트를 자율적으로 선택하여 사용하는 관리자에이전트 구조
     """
     summary = state.get("summary", "")
     question = state["question"]
@@ -145,11 +142,7 @@ def supervisor_node(state: State):
     web_agent = get_web_agent()
     supervisor = create_supervisor(
         model=get_gpt(),
-        agents=[
-            db,
-            data_analysis,
-            web_agent
-        ],
+        agents=[db, data_analysis, web_agent],
         prompt=prompt,
         add_handoff_back_messages=True,
         output_mode="full_history",
