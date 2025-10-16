@@ -41,7 +41,8 @@
 ---
 
 ## 🎬 시연 영상
-<img width="600" height="400" alt="Mermaid Chart - Create complex, visual diagrams with text -2025-10-16-041316" src="https://github.com/user-attachments/assets/82e4cf73-5025-4368-a9b1-401caf1d14b2" />
+
+<img width="800" height="600" alt="Vertical AI" src="https://github.com/user-attachments/assets/5bdbc419-2e21-4fba-be9d-dfc54bda926b" />
 
 [👉 YouTube Demo 바로가기](https://youtu.be/n0RE564xTG4)
 
