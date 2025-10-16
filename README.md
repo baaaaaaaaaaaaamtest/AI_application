@@ -31,12 +31,38 @@
 
 ---
 
+### 구성 요소
+- **Frontend:** Streamlit  
+- **Backend Workflow:** LangGraph + SuperAgent  
+- **LLM Engine:** ChatGPT API (function calling 활용)  
+- **Database Layer:** SQLAlchemy + SQLite (테스트 환경)  
+- **Visualization:** Matplotlib / Plotly
+
+---
+
 ## 🔧 기술 스택
 
-- **Python**
-- **LangGraph**
-- **SuperAgent**
-- **Streamlit**
+| 영역 | 기술 |
+|------|------|
+| Frontend | Streamlit |
+| LLM Framework | LangGraph, SuperAgent |
+| Backend Core | Python 3.11 |
+| Database | SQLite / SQLDatabaseToolkit |
+| Visualization | Plotly, Matplotlib |
+| API Integration | OpenAI ChatGPT API |
+
+---
+
+## 🧠 개발 포인트
+
+- **LangGraph 기반 워크플로우 설계:**  
+  각 단계(Node)를 명시적으로 정의하여 데이터 플로우를 트레이싱하고, 실패 시 재시도 또는 수정이 가능한 구조로 개발.
+
+- **SQL 생성 신뢰성 향상:**  
+  질의 목적(Intent)에 따라 쿼리 생성을 시뮬레이션 후 Validation 단계 추가.  
+
+- **시각화 자동화:**  
+  AI가 직접 Python 시각화 코드를 작성하여 Streamlit 내 렌더링, 사용자는 단일 입력만으로 결과 확인 가능.
 
 ---
 
