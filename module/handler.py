@@ -51,6 +51,7 @@ def stream_handler(st, streamlit_container, agent_executor, inputs, config):
     Handle streaming of agent execution results in a Streamlit container.
 
     Args:
+        st : streamlit object
         streamlit_container (streamlit.container): Streamlit container to display results
         agent_executor: Agent executor instance
         inputs: Input data for the agent
@@ -105,6 +106,7 @@ def stream_handler(st, streamlit_container, agent_executor, inputs, config):
                                 with st.status(
                                     f'✅ {current_tool_message["tool_name"]}'
                                 ):
+                                    # run_python_repl 인경우 이미지 실행
                                     if (
                                         current_tool_message["tool_name"]
                                         == "run_python_repl"
@@ -116,6 +118,7 @@ def stream_handler(st, streamlit_container, agent_executor, inputs, config):
                                         )
                                         st.image(filename)
                                     st.markdown(current_tool_message["tool_result"])
+                        # supervisor 하위 Agent의 출력 화면 표시
                         if metadata[1]["langgraph_node"] == "agent":
                             if _metadata.content:
                                 if agent_message is None:
@@ -125,7 +128,8 @@ def stream_handler(st, streamlit_container, agent_executor, inputs, config):
                                 agent_message.markdown(agent_answer)
                 except Exception as e:
                     st.error(f"에러 발생: {str(e)}")
-        # supervisor 노드가 직접 답변하는 경우 출력하는 로직
+
+        # supervisor 노드가 직접 답변하는 경우 출력하는 로직 그외 supervisor node 출력 제외
         try:
             past_data = agent_executor.get_state(config).values
             if len(past_data["messages"]) <= 3:
