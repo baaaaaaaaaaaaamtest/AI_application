@@ -29,7 +29,6 @@ import cohere
 
 
 # LangSmith 추적을 설정합니다. https://smith.langchain.com
-# !pip install -qU langchain-teddynote
 load_dotenv()
 
 
@@ -69,14 +68,6 @@ def get_gemini(
         max_output_tokens=max_output_tokens,
         google_api_key=os.getenv("GOOGLE_API_KEY"),
     )
-
-
-# def get_pdf_loader(path: str = "../data/SPRI_AI_Brief_2023년12월호_F.pdf"):
-#     """
-#     pdf loader 를 활용하여 pdf 파일을 Load함
-#     추후 docling,  한글 pdf loader 등 활용하여 성능 비교 필요함
-#     """
-#     return PyPDFLoader(path)
 
 
 def get_text_splitter(chunk_size: int = 1000, chunk_overlap: int = 50):

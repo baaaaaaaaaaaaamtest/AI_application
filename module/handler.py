@@ -1,4 +1,6 @@
-import streamlit as st
+from attr import dataclass
+from langchain_core.messages import ChatMessage
+from langchain_core.messages import ToolMessage
 
 
 def get_current_tool_message(tool_args, tool_call_id):
@@ -31,20 +33,20 @@ def format_search_result(results):
     Returns:
         str: Formatted markdown string with search results
     """
-    import json
+    # import json
 
-    results = json.loads(results)
+    # results = json.loads(results)
 
-    answer = ""
-    for result in results:
-        answer += f'**[{result["title"]}]({result["url"]})**\n\n'
-        answer += f'{result["content"]}\n\n'
-        answer += f'신뢰도: {result["score"]}\n\n'
-        answer += "\n-----\n"
-    return answer
+    # answer = ""
+    # for result in results:
+    #     answer += f'**[{result["title"]}]({result["url"]})**\n\n'
+    #     answer += f'{result["content"]}\n\n'
+    #     answer += f'신뢰도: {result["score"]}\n\n'
+    #     answer += "\n-----\n"
+    return results
 
 
-def stream_handler(streamlit_container, agent_executor, inputs, config):
+def stream_handler(st, streamlit_container, agent_executor, inputs, config):
     """
     Handle streaming of agent execution results in a Streamlit container.
 
@@ -67,47 +69,154 @@ def stream_handler(streamlit_container, agent_executor, inputs, config):
 
     container = streamlit_container.container()
     with container:
-        for chunk_msg, metadata in agent_executor.stream(
-            inputs, config, stream_mode="messages"
-        ):
-            if hasattr(chunk_msg, "tool_calls") and chunk_msg.tool_calls:
-                # Initialize tool call result
-                tool_arg = {
-                    "tool_name": "",
-                    "tool_result": "",
-                    "tool_call_id": chunk_msg.tool_calls[0]["id"],
-                }
-                # Save tool name
-                tool_arg["tool_name"] = chunk_msg.tool_calls[0]["name"]
-                if tool_arg["tool_name"]:
-                    tool_args.append(tool_arg)
+        with st.spinner("응답 생성 중..."):
+            for chunk_msg, metadata in agent_executor.stream(
+                inputs,
+                config,
+                stream_mode="messages",
+                subgraphs=True,
+            ):
+                # print(f" chunk_msg : \n{chunk_msg}\n")
+                # print(f" metadata : \n{metadata}\n")
+                try:
+                    ## summary와 supervisor 화면 상에서 제거
+                    if chunk_msg != () and "supervisor" not in chunk_msg[0]:
 
-            if hasattr(chunk_msg, "tool_call_chunks") and chunk_msg.tool_call_chunks:
-                if len(chunk_msg.tool_call_chunks) > 0:  # Add None check
-                    # Accumulate tool call arguments
-                    chunk_msg.tool_call_chunks[0]["args"]
+                        _metadata = metadata[0]
+                        if hasattr(_metadata, "tool_calls") and _metadata.tool_calls:
+                            # Initialize tool call result
+                            tool_arg = {
+                                "tool_name": "",
+                                "tool_result": "",
+                                "tool_call_id": _metadata.tool_calls[0]["id"],
+                            }
+                            # Save tool name
+                            tool_arg["tool_name"] = _metadata.tool_calls[0]["name"]
+                            if tool_arg["tool_name"]:
+                                tool_args.append(tool_arg)
 
-            if metadata["langgraph_node"] == "tools":
-                # Save tool execution results
-                current_tool_message = get_current_tool_message(
-                    tool_args, chunk_msg.tool_call_id
-                )
-                if current_tool_message:
-                    current_tool_message["tool_result"] = chunk_msg.content
-                    with st.status(f'✅ {current_tool_message["tool_name"]}'):
-                        if current_tool_message["tool_name"] == "web_search":
-                            st.markdown(
-                                format_search_result(
-                                    current_tool_message["tool_result"]
-                                )
+                        if isinstance(_metadata, ToolMessage):
+                            # Save tool execution results
+                            current_tool_message = get_current_tool_message(
+                                tool_args, _metadata.tool_call_id
                             )
+                            if current_tool_message:
+                                current_tool_message["tool_result"] = _metadata.content
+                                with st.status(
+                                    f'✅ {current_tool_message["tool_name"]}'
+                                ):
+                                    if (
+                                        current_tool_message["tool_name"]
+                                        == "run_python_repl"
+                                    ):
+                                        filename = (
+                                            metadata[0]
+                                            .content.replace("Success: ", "")
+                                            .strip()
+                                        )
+                                        st.image(filename)
+                                    st.markdown(current_tool_message["tool_result"])
+                        if metadata[1]["langgraph_node"] == "agent":
+                            if _metadata.content:
+                                if agent_message is None:
+                                    agent_message = st.empty()
+                                # Accumulate agent message
+                                agent_answer += _metadata.content
+                                agent_message.markdown(agent_answer)
+                except Exception as e:
+                    st.error(f"에러 발생: {str(e)}")
+        # supervisor 노드가 직접 답변하는 경우 출력하는 로직
+        try:
+            past_data = agent_executor.get_state(config).values
+            if len(past_data["messages"]) <= 3:
+                agent_answer = past_data["answer"].content
+                if agent_message is None:
+                    agent_message = st.empty()
+                agent_message.markdown(agent_answer)
+        except Exception as e:
+            st.warning(f"llm 가져오기 중 에러: {str(e)}")
 
-            if metadata["langgraph_node"] == "agent":
-                if chunk_msg.content:
-                    if agent_message is None:
-                        agent_message = st.empty()
-                    # Accumulate agent message
-                    agent_answer += chunk_msg.content
-                    agent_message.markdown(agent_answer)
+        _tool_args = [
+            tool_arg for tool_arg in tool_args if tool_arg.get("tool_result") != ""
+        ]
+        return container, _tool_args, agent_answer
 
-        return container, tool_args, agent_answer
+
+@dataclass
+class ChatMessageWithType:
+    chat_message: ChatMessage
+    msg_type: str
+    tool_name: str
+
+
+def add_message(st, role, message, msg_type="text", tool_name=""):
+    st.session_state["tmp_messages"].append(ChatMessage(role=role, content=message))
+    if msg_type == "text":
+        st.session_state["messages"].append(
+            ChatMessageWithType(
+                chat_message=ChatMessage(role=role, content=message),
+                msg_type="text",
+                tool_name=tool_name,
+            )
+        )
+    elif msg_type == "tool_result":
+        st.session_state["messages"].append(
+            ChatMessageWithType(
+                chat_message=ChatMessage(
+                    role="assistant", content=format_search_result(message)
+                ),
+                msg_type="tool_result",
+                tool_name=tool_name,
+            )
+        )
+
+
+def get_double_array(messages):
+    result = []
+    temp_list = []
+    previous_role = None
+    for msg_with_type in messages:
+
+        role = msg_with_type.chat_message.role
+        if role == previous_role:
+            # 같은 role이면 현재 그룹에 추가
+            temp_list.append(msg_with_type)
+        else:
+            # role이 바뀌면 이전 그룹을 결과에 추가하고 새 그룹 시작
+            if temp_list:
+                result.append({previous_role: temp_list})
+            temp_list = [msg_with_type]
+            previous_role = role
+
+    # 마지막 그룹 추가
+    if temp_list:
+        result.append({previous_role: temp_list})
+    return result
+
+
+def print_history(st):
+    messages = get_double_array(st.session_state["messages"])
+    for msg in messages:
+        role = list(msg.keys())[0]
+        if role == "user":
+            for m in msg[role]:
+                user_role = m.chat_message.role
+                user_content = m.chat_message.content
+                user_tool_name = m.tool_name
+                user_msg_type = m.msg_type
+                st.chat_message(user_role).write(user_content)
+        elif role == "assistant":
+            with st.chat_message("assistant"):
+                for m in msg[role]:
+                    ai_role = m.chat_message.role
+                    ai_content = m.chat_message.content
+                    ai_tool_name = m.tool_name
+                    ai_msg_type = m.msg_type
+                    if ai_msg_type == "text":
+                        st.markdown(ai_content)
+                    elif ai_msg_type == "tool_result":
+                        with st.expander(f"✅ {ai_tool_name}"):
+                            if ai_tool_name == "run_python_repl":
+                                filename = ai_content.replace("Success: ", "").strip()
+                                st.image(filename)
+                            st.markdown(ai_content)

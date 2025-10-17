@@ -2,7 +2,6 @@ import os, sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname("utils"), "..")))
 from module.utils import *
-from module.prompt import *
 from langchain_tavily import TavilySearch
 from langgraph.prebuilt import create_react_agent
 from typing import Annotated
@@ -12,6 +11,7 @@ import bs4
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.document_transformers import LongContextReorder
 from langchain.retrievers import BM25Retriever, EnsembleRetriever
+from langchain_core.prompts import ChatPromptTemplate
 
 
 def get_prompt_web_search():
